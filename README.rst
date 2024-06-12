@@ -94,8 +94,14 @@ Start Binaural Simulation::
 Examples
 --------
 
-There are two examples included in this repository in the ``example/brirs`` folder.  ``extract_me_here.zip`` is a ``wav`` example, and ``example_mat_hp.zip`` is a mat example. Both should be extracted exactly where they are and can be used for testing purposes. Due to file size limitations of github, both of these files have been split into three parts.
+There are two examples included in this repository in the ``example/brirs`` folder. ``extract_me_here.zip`` is a ``wav`` example, and ``example_mat_hp.zip`` is a mat example. Both should be extracted exactly where they are and can be used for testing purposes. Due to file size limitations of github, both of these files have been split into three parts.
 
+The files can be recombined and extracted from the root directly by::
+
+    cat example/brirs/extract_me_here.zip.* > example/brirs/extract_me_here.zip
+    unzip example/brirs/extract_me_here.zip -d example/brirs
+    cat example/brirs/example_mat_hp.zip.* > example/brirs/example_mat_hp.zip
+    unzip example/brirs/example_mat_hp.zip -d example/brirs
 
 Description
 ===========
