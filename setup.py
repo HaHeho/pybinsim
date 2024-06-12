@@ -32,13 +32,14 @@ setup(
     cmdclass={'test': PyTest},
     install_requires=[
         "numpy >= 1.19.2",
-        "sounddevice >= 0.4.1",
-        "torch >= 1.10.2",
         "pyserial >= 3.4",
         "pytest >= 6.1.1",
         "python-osc >= 1.7.4",
-        "Soundfile >= 0.10.3.post1",
         "pyzmq >= 22.3.0",
+        "scipy",
+        "sounddevice >= 0.4.1",
+        "soundfile >= 0.10.3.post1",
+        "torch >= 1.10.2",
     ],
 
     description='Real-time dynamic binaural synthesis with head tracking.',
