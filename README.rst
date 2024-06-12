@@ -11,20 +11,20 @@ Install
 
 For quick and easy installation, you may use the yml file that has been provided with the repository::
 
-    $ conda env create --name binsim -f environment.yml
+    conda env create --file environment.yml
+    conda activate binsim
 
 For a manual installation or in case something does not work, create a virtual environment and install the necessary dependencies::
 
-    $ conda create --name binsim python=3.11
-    $ conda activate binsim
-    $ conda install numpy scipy pyzmq
-    $ pip install sounddevice pysoundfile python-osc
+    conda create --name binsim python=3.11 numpy pip pyserial pytest pyzmq scipy
+    conda activate binsim
+    pip install --editable .
 
-Note: While sounddevice may also be in the conda-forge repository, it is recommended to use the pip version for ASIO support.
+Note: While sounddevice may also be in the conda-forge repository, it is recommended to use the pip version for ASIO support, which is automatically installed as a dependency.
 
 Additionally you will have to install pyTorch with the setup that satisfies your needs, e.g. for a conda installation on an NVidia GPU target, you may use::
 
-    $ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+    conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
 For more on this, see https://pytorch.org/get-started/locally/
 
@@ -38,13 +38,13 @@ For ubuntu
 
 ::
 
-    $ apt-get install gcc portaudio19-dev libfftw3-dev
+    apt-get install gcc portaudio19-dev libfftw3-dev
 
 For Fedora
 
 ::
 
-    $ sudo dnf install gcc portaudio19-devel fftw-devel
+    sudo dnf install gcc portaudio19-devel fftw-devel
 
     
 Run
