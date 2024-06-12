@@ -22,7 +22,7 @@ For a manual installation or in case something does not work, create a virtual e
 
 Note: While sounddevice may also be in the conda-forge repository, it is recommended to use the pip version for ASIO support, which is automatically installed as a dependency.
 
-Additionally you will have to install pyTorch with the setup that satisfies your needs, e.g. for a conda installation on an NVidia GPU target, you may use::
+Additionally you will have to install pyTorch with the setup that satisfies your needs, e.g. for a conda installation on an Nvidia GPU target, you may use::
 
     conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
@@ -34,7 +34,7 @@ Linux
 
 On linux, make sure that gcc and the development headers for libfftw and portaudio are installed, before setting up the environment.
 
-For ubuntu
+For Ubuntu
 
 ::
 
@@ -103,20 +103,20 @@ Description
 Basic Principle
 ----------------
 
-pyBinSim allows interactive playback of arbitrarily many sound files over so called players, each of which can be independently controlled. Players feed their audio into convolver channels, which represent virtual sound sources. The number of convover channels depends on the configuration option `maxChannels`. Each convolver channel applies an FIR filter to create the left and right channel. The output of all convolvers is summed in the end, an optional headphone EQ is applied and the stereo output is sent to the operating system. 
+pyBinSim allows interactive playback of arbitrarily many sound files over so called players, each of which can be independently controlled. Players feed their audio into convolver channels, which represent virtual sound sources. The number of convolver channels depends on the configuration option `maxChannels`. Each convolver channel applies an FIR filter to create the left and right channel. The output of all convolvers is summed in the end, an optional headphone EQ is applied and the stereo output is sent to the operating system.
 
 .. image:: players-flowchart.drawio.svg
   :width: 400
   :alt: This flowchart shows how players can be independently controlled and that multiple players can feed any given convolver channel.
 
-The global playback and each individual player can be controlled over OSC messages. Each player is identfied by its player name, which defaults to the sound path. Therefore, the default behavior when re-playing an already playing file is to re-start the sound file. In contrast, setting the player name manually to a new one allows playing back a single sound file multiple times concurrently. 
+The global playback and each individual player can be controlled over OSC messages. Each player is identified by its player name, which defaults to the sound path. Therefore, the default behavior when re-playing an already playing file is to re-start the sound file. In contrast, setting the player name manually to a new one allows playing back a single sound file multiple times concurrently.
 
 The filter for each convolver channel can also be selected via OSC messages. The messages contain the 
 index of the convolver channel for which the filter should be switched and a key to address the correct filter. Each key corresponds to one filter. 
 
 pyBinSim now features up to three separate convolvers on each convolver channel which enables you to exchange filter parts, like direct sound, early reflections and late reflections, in real-time. Each convolver runs independently from the others and their results are summed together. This needs to be considered when creating the corresponding filters.
 
-Also, pyBinSim offers you the possibility to run the convolution on a CUDA based graphics card. Especially for long filters (several seconds) or/and multiple sound sources, this can lead to a signficant speedup.
+Also, pyBinSim offers you the possibility to run the convolution on a CUDA based graphics card. Especially for long filters (several seconds) or/and multiple sound sources, this can lead to a significant speedup.
 
     
 Config Parameter Description
@@ -127,15 +127,15 @@ soundfile:
 blockSize: 
     Number of samples which are processed per block. Low values reduce delay but increase cpu load.
 ds_filterSize: 
-    Defines filter size of the direct sound filters. Filter size must be a mutltiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here. 
+    Defines filter size of the direct sound filters. Filter size must be a multiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here.
 early_filterSize: 
-    Defines filter size of the early filters. Filter size must be a mutltiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here.
+    Defines filter size of the early filters. Filter size must be a multiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here.
 late_filterSize: 
-    Defines filter size of the late reverb filters. Filter size must be a mutltiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here.
+    Defines filter size of the late reverb filters. Filter size must be a multiple of blockSize. If your filters are a different length, they are either shortened or zero padded to the size indicated here.
 headphone_filterSize: 
-    Defines filter size of the headphone compensation filters. Filter size must be a mutltiple of blockSize.
+    Defines filter size of the headphone compensation filters. Filter size must be a multiple of blockSize.
 filterSource[mat/wav]:
-    Choose between 'mat' or 'wav' to indicate whether you want to use filters stored as mat file or as seperate wav files.
+    Choose between 'mat' or 'wav' to indicate whether you want to use filters stored as mat file or as separate wav files.
 filterDatabase:
     Enter path to the mat file containing your filters. Check example for structure of the mat file.
 filterList:
@@ -143,11 +143,11 @@ filterList:
 maxChannels: 
     Maximum number of convolver channels/virtual sound sources which can be controlled during runtime. The value for maxChannels must match or exceed the number of channels in sound files. If you choose this value too high, processing power will be wasted.
 samplingRate: 
-    Sample rate for filters and soundfiles. Caution: No automatic sample rate conversion.
+    Sample rate for filters and sound files. Caution: No automatic sample rate conversion.
 enableCrossfading: 
     Enable cross fade between audio blocks. Set 'False' or 'True'.
 useHeadphoneFilter: 
-    Enables headhpone equalization. The filterset should contain a filter with the identifier HPFILTER. Set 'False' or 'True'.
+    Enables headphone equalization. The filter set should contain a filter with the identifier HPFILTER. Set 'False' or 'True'.
 loudnessFactor: 
     Factor for overall output loudness. Attention: Clipping may occur.
 loopSound:
@@ -179,7 +179,7 @@ Example lines from filter list: ::
     ER 165 2 0 0 0 0 0 0 0 0 0 0 0 0 0 brirs/kemar_0_165_early.wav
     LR 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 brirs/late_reverb.wav
 
-Lines with the prefix DS, ER and LR contain a 'filter key' which consists of 9 or 15 integer numbers. They are used to tell pyBinSim which filter to apply. These numbers can be arbitrarily assigned to suit your use case, but for consistency with mat based filters its adivced to assign the numbers in the following order:
+Lines with the prefix DS, ER and LR contain a 'filter key' which consists of 9 or 15 integer numbers. They are used to tell pyBinSim which filter to apply. These numbers can be arbitrarily assigned to suit your use case, but for consistency with mat based filters its advised to assign the numbers in the following order:
 
 For 9 digit keys::
 
@@ -212,7 +212,7 @@ A mat file should contain one ore more variables containing your filters. The ma
     "custom" [array(int, int ,int)]
     "filter" [array(single,2), array(double,2)]
 
-For headhpone filters, only the field filter is relevant. To reduce memory usage we advise to use single precision for the filters. To speedup the filter loading we advice to store the mat files on a SSD and to save the mat files without compression (which is not the default setting in MATLAB). Also take a look at the example_mat.mat file to understand the structure. 
+For headphone filters, only the field filter is relevant. To reduce memory usage we advise to use single precision for the filters. To speedup the filter loading we advice to store the mat files on a SSD and to save the mat files without compression (which is not the default setting in MATLAB). Also take a look at the example_mat.mat file to understand the structure.
 
 OSC & ZMQ Message Examples
 --------------------------
@@ -262,7 +262,7 @@ Because of issues with OSC when many messages are sent, multiple OSC receivers a
 OSC Message Reference
 ------------------------------
 
-This part uses a syntax where the OSC address pattern is followed by arguments described in curly braces and separated by spaces. The typing syntax follows Python conventions. Arguments with a default value can be ommitted. Due to the absence of keyword arguments in OSC it is not possible to use the default value for an argument if it precedes an argument you want to set. 
+This part uses a syntax where the OSC address pattern is followed by arguments described in curly braces and separated by spaces. The typing syntax follows Python conventions. Arguments with a default value can be omitted. Due to the absence of keyword arguments in OSC it is not possible to use the default value for an argument if it precedes an argument you want to set.
 
 Set direct sound filter with convolver channel index and numerical filter key (9 or 15 numbers)::
 
