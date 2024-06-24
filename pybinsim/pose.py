@@ -3,8 +3,6 @@ from collections import namedtuple
 
 import numpy as np
 
-logger = logging.getLogger("pybinsim.Pose")
-
 
 class Orientation(namedtuple('Orientation', ['yaw', 'pitch', 'roll'])):
     pass
@@ -21,6 +19,9 @@ class Custom(namedtuple('CustomValues', ['a', 'b', 'c'])):
 class Pose:
     def __init__(self, listener_orientation, listener_position, custom=Custom(0, 0, 0,),
                  source_orientation=Orientation(0, 0, 0), source_position=Position(0, 0, 0)):
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        # self.log.info("Init")
+
         self.listener_orientation = listener_orientation
         self.listener_position = listener_position
         self.source_orientation = source_orientation
@@ -69,6 +70,9 @@ class Pose:
 class SourcePose:
     def __init__(self, source_orientation=Orientation(0, 0, 0),
                  source_position=Position(0, 0, 0), custom=Custom(0, 0, 0)):
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        # self.log.info("Init")
+
         self.source_orientation = source_orientation
         self.source_position = source_position
         self.custom = custom

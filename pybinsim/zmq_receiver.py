@@ -14,8 +14,7 @@ class ZmqReceiver(PkgReceiver):
 
     def __init__(self, current_config, soundhandler: SoundHandler):
         super().__init__(current_config, soundhandler)
-        #self.log = logging.getLogger("pybinsim.ZmqReceiver")
-        self.log.info("zmqReceiver: init")
+        self.log.info("Init")
 
         # Basic settings
         # self.ip = current_config.get('zmq_ip')
@@ -175,6 +174,6 @@ class ZmqReceiver(PkgReceiver):
 
         :return: None
         """
-        self.log.info('ZmqReceiver: close()')
+        self.log.info('Close')
         self.run_thread = False
         self.zmq_thread.join(timeout=3)

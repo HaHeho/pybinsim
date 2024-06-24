@@ -42,8 +42,7 @@ import torch
 
 class BinSimConfig(object):
     def __init__(self):
-
-        self.log = logging.getLogger("pybinsim.BinSimConfig")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
 
         # Default Configuration
         self.configurationDict = {'soundfile': '',
@@ -120,9 +119,8 @@ class BinSim(object):
     """
 
     def __init__(self, config_file):
-
-        self.log = logging.getLogger("pybinsim.BinSim")
-        self.log.info("BinSim: init")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Init")
 
         self.cpu_usage_update_rate = 100
         self.time_usage = np.zeros(self.cpu_usage_update_rate-1, dtype='float32')
@@ -151,7 +149,7 @@ class BinSim(object):
         self.__cleanup()
 
     def stream_start(self):
-        self.log.info("BinSim: stream_start")
+        self.log.info("Stream start")
         try:
             self.stream = sd.OutputStream(samplerate=self.sampleRate,
                                           dtype='float32',
@@ -159,15 +157,11 @@ class BinSim(object):
                                           latency="low",
                                           blocksize=self.blockSize,
                                           callback=audio_callback(self))
-
-           #pydevd.settrace(suspend=False, trace_only_current_thread=True)
-
+            # pydevd.settrace(suspend=False, trace_only_current_thread=True)
             with self.stream as s:
-                self.log.info(f"latency: {s.latency} seconds")
+                self.log.info(f"latency: {s.latency*1e3:.2f} ms")
                 while True:
                     sd.sleep(1000)
-
-
         except KeyboardInterrupt:
             print("KEYBOARD")
         except Exception as e:

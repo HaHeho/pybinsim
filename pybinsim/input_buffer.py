@@ -37,8 +37,8 @@ class InputBufferMulti(object):
     def __init__(self, block_size, inputs, torch_settings):
         start = default_timer()
 
-        self.log = logging.getLogger("pybinsim.input_buffer")
-        self.log.info("Input_buffer: Start Init")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Start init")
 
         # Torch Options
         self.torch_device = torch.device(torch_settings)
@@ -56,8 +56,8 @@ class InputBufferMulti(object):
 
         end = default_timer()
         delta = end - start
-        self.log.info("Convolver: Finished Init (took {}s)".format(delta))
-
+        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta*1e3:.2} ms"
+        self.log.info(f"Finished init (took {delta_str})")
 
     def get_counter(self):
         """
@@ -108,5 +108,5 @@ class InputBufferMulti(object):
         return output
 
     def close(self):
-        self.log.info("Input_buffer: close")
+        self.log.info("Close")
 

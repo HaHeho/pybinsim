@@ -42,7 +42,7 @@ class OscReceiver(PkgReceiver):
 
     def __init__(self, current_config, soundhandler: SoundHandler):
         super().__init__(current_config, soundhandler)
-        self.log.info("oscReceiver: init")
+        self.log.info("Init")
 
         self.port1 = self.port
         self.port2 = self.port + 1
@@ -135,7 +135,7 @@ class OscReceiver(PkgReceiver):
 
         :return: None
         """
-        self.log.info('oscReiver: close()')
+        self.log.info('Close')
         self.server.shutdown()
         self.server2.shutdown()
         self.server3.shutdown()

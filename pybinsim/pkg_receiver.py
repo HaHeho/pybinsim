@@ -9,8 +9,8 @@ CONFIG_SOUNDFILE_PLAYER_NAME = "config_soundfile"
 
 class PkgReceiver(object):
     def __init__(self, current_config, soundhandler: SoundHandler):
-        self.log = logging.getLogger("pybinsim.PkgReceiver")
-        #self.log.info("pkgReceiver: init")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Init")
 
         self.soundhandler = soundhandler
 

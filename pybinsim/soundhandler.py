@@ -29,8 +29,6 @@ import numpy as np
 
 from pybinsim.player import LoopState, PlayState, Player
 
-logger = logging.getLogger('pybinsim.SoundHandler')
-
 
 class SoundHandler(object):
     """Handles multiple players and serves their audio to pyBinSim.
@@ -57,6 +55,9 @@ class SoundHandler(object):
     """
 
     def __init__(self, block_size, n_channels, fs):
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Init")
+
         self._fs: Final[int] = fs
         self._n_channels: Final[int] = n_channels
         self._block_size: Final[int] = block_size

@@ -6,16 +6,13 @@ from pybinsim.application import BinSim
 
 def init_logging():
     console_handler = logging.StreamHandler()
-
     formatter = logging.Formatter(
-        '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
+        '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(name)s - %(message)s')
     console_handler.setFormatter(formatter)
-
-    logger = logging.getLogger("pybinsim")
-    logger.addHandler(console_handler)
-
-    return logger
+    log = logging.getLogger(__package__)
+    log.addHandler(console_handler)
+    return log
 
 
 logger = init_logging()
-logger.info(f"Starting pybinsim v{version('pybinsim')}")
+logger.info(f"Starting {__package__} v{version(__package__)}")

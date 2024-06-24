@@ -9,8 +9,6 @@ import soundfile as sf
 
 from pathlib import Path
 
-logger = logging.getLogger('pybinsim.Player')
-
 PlayState = Enum('PlayState', ('PLAYING PAUSED STOPPED'))
 LoopState = Enum('LoopState', ('SINGLE LOOP'))
 
@@ -51,6 +49,9 @@ class Player(object):
     """
 
     def __init__(self, filepaths: List[Path], initial_play_state: PlayState, initial_loop_state: LoopState, block_size, fs):
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Init")
+
         self._filepaths: Final[List[Path]] = filepaths
         self._block_size: Final[int] = block_size
         self._fs: Final[int] = fs
@@ -88,7 +89,7 @@ class Player(object):
                 if self._playback_queue.qsize() < PLAYBACK_QUEUE_MINIMUM_SIZE and self.filling_queue_done():
                     self._request_filling_queue()
             except Empty:
-                logger.warning('Playback queue empty')
+                self.log.warning('Playback queue empty')
                 # TODO remove allocation and benchmark
                 block = np.zeros((1, self._block_size), dtype=np.float32)
         elif self.play_state == PlayState.PAUSED:
@@ -130,7 +131,7 @@ class Player(object):
                     self._read_and_queue(self._next_file_index)
                     self._next_file_index += 1
                 except Exception as err:
-                    logger.error(err)
+                    self.log.error(err)
                     self._filepaths.pop(self._next_file_index)
 
             if (self._end_of_playlist_reached() and self.loop_state == LoopState.SINGLE) or not self._filepaths:

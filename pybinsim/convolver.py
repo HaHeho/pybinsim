@@ -37,8 +37,8 @@ class ConvolverTorch(object):
     def __init__(self, ir_size: int, block_size: int, stereoInput: bool, sources: int, interpolate: bool, torch_settings: str):
         start = default_timer()
 
-        self.log = logging.getLogger("pybinsim.ConvolverTorch")
-        self.log.info("Convolver: Start Init")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Start init")
 
         # Torch options
         self.torch_device = torch.device(torch_settings)
@@ -100,7 +100,8 @@ class ConvolverTorch(object):
 
         end = default_timer()
         delta = end - start
-        self.log.info("Convolver: Finished Init (took {}s)".format(delta))
+        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta*1e3:.2} ms"
+        self.log.info(f"Finished init (took {delta_str})")
 
     def get_counter(self):
         """
@@ -169,4 +170,4 @@ class ConvolverTorch(object):
             return torch.fft.irfft(self.resultFreq, out=irfft_buffer, dim=2)[:, :, self.block_size:self.block_size * 2]
 
     def close(self):
-        self.log.info("Convolver: close")
+        self.log.info("Close")

@@ -37,7 +37,7 @@ import scipy.io as sio
 class Filter(object):
 
     def __init__(self, inputfilter, irBlocks, block_size,torch_settings, filename=None):
-        self.log = logging.getLogger("pybinsim.Filter")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
 
         # Torch options
         self.torch_device = torch.device(torch_settings)
@@ -72,7 +72,7 @@ class Filter(object):
     
     def getFilterTD(self):
         if self.fd_available:
-            self.log.warning("FilterStorage: No time domain filter available!")
+            self.log.warning("No time domain filter available!")
             return torch.zeros((2, self.ir_blocks, self.block_size))
         else:
             return self.IR_blocked
@@ -87,7 +87,7 @@ class Filter(object):
 
     def getFilterFD(self):
         if not self.fd_available:
-            self.log.warning("FilterStorage: No frequency domain filter available!")
+            self.log.warning("No frequency domain filter available!")
             return torch.zeros((2, self.ir_blocks, self.block_size+1), dtype=torch.complex64)
         else:
             return self.TF_blocked
@@ -106,8 +106,8 @@ class FilterStorage(object):
     #def __init__(self, irSize, block_size, filter_list_name):
     def __init__(self, block_size, filter_source, filter_list_name, filter_database, torch_settings, useHeadphoneFilter = False, headphoneFilterSize = 0, ds_filterSize = 0, early_filterSize = 0, late_filterSize = 0, sd_filterSize = 0):
 
-        self.log = logging.getLogger("pybinsim.FilterStorage")
-        self.log.info("FilterStorage: init")
+        self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
+        self.log.info("Init")
         
         self.ds_size = ds_filterSize
         self.block_size = block_size
@@ -387,7 +387,7 @@ class FilterStorage(object):
             
             # check for missing filters and throw exception if not found
             if not Path(filter_path).exists():
-                self.log.warn(f'Wavefile not found: {fn_filter}')
+                self.log.warning(f'Wavefile not found: {fn_filter}')
                 raise FileNotFoundError(f'File {fn_filter} is missing.')
             
             self.log.debug(f'Loading {filter_path}')
@@ -570,4 +570,4 @@ class FilterStorage(object):
         return current_filter
 
     def close(self):
-        self.log.info('FilterStorage: close()')
+        self.log.info('Close')
