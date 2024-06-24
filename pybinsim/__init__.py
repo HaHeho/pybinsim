@@ -4,9 +4,8 @@ from importlib.metadata import version
 from pybinsim.application import BinSim
 
 
-def init_logging(loglevel):
+def init_logging():
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(loglevel)
 
     formatter = logging.Formatter(
         '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
@@ -14,10 +13,9 @@ def init_logging(loglevel):
 
     logger = logging.getLogger("pybinsim")
     logger.addHandler(console_handler)
-    logger.setLevel(loglevel)
 
     return logger
 
 
-logger = init_logging(logging.INFO)
+logger = init_logging()
 logger.info(f"Starting pybinsim v{version('pybinsim')}")
