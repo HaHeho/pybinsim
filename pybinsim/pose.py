@@ -47,7 +47,7 @@ class Pose:
 
             return Pose(listener_orientation, listener_position, custom)
 
-        # format: listener_orientation - listener_position - custom - source_orientation - source_position
+        # format: listener_orientation - listener_position - source_orientation - source_position - custom
         if len(filter_value_list) == 15:
             listener_orientation = Orientation(
                 filter_value_list[0], filter_value_list[1], filter_value_list[2])

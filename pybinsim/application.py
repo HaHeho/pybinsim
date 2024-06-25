@@ -181,16 +181,16 @@ class BinSim(object):
 
         if ds_size < self.blockSize:
             ds_size = self.blockSize
-            self.log.info('Block size smaller than direct sound filter size: Zero Padding DS filter')
+            self.log.info('Direct sound filter size smaller than block size: Zero-padding DS filter')
         if early_size < self.blockSize:
             early_size = self.blockSize
-            self.log.info('Block size smaller than early filter size: Zero Padding EARLY filter')
+            self.log.info('Early filter size smaller than block size: Zero-padding EARLY filter')
         if late_size < self.blockSize:
             late_size = self.blockSize
-            self.log.info('Block size smaller than late filter size: Zero Padding LATE filter')
+            self.log.info('Late filter size smaller than block size: Zero-padding LATE filter')
         if sd_size < self.blockSize:
             sd_size = self.blockSize
-            self.log.info('Block size smaller than directivty filter size: Zero Padding sd filter')
+            self.log.info('Directivity filter size smaller than block size: Zero-padding SD filter')
 
         # Create FilterStorage
         filterStorage = FilterStorage(self.blockSize,
