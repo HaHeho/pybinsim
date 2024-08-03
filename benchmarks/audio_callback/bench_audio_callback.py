@@ -62,10 +62,7 @@ if __name__ == "__main__":
 
     import pybinsim
 
-    binsim = pybinsim.BinSim(
-        "benchmarks/audio_callback/pyBinSimSettings_audio_callback.txt"
-    )
-
+    binsim = pybinsim.BinSim("pyBinSimSettings_audio_callback.txt")
 
     class MockStream:
         def __init__(self):
@@ -107,7 +104,7 @@ if __name__ == "__main__":
             sleep(1)  # wait for all messages to get handled
             times_azimuth_sent.append(rx.recv())
             times_azimuth_received.append(
-                binsim.oscReceiver.get_times_azimuth_received_and_reset()
+                binsim.pkgReceiver.get_times_azimuth_received_and_reset()
             )
 
     stop_flag.set()
@@ -139,13 +136,13 @@ if __name__ == "__main__":
     row_format = "{:>8.2f} " * (len(headings))
 
     def print_times(times, msg_per_sec):
-        sorted = np.sort(times)
+        _sorted = np.sort(times)
         row = [
             msg_per_sec,
             np.mean(times),
             np.std(times),
             *np.percentile(times, (0, 50, 99)),
-            *sorted[-4:],
+            *_sorted[-4:],
             times[0],
         ]
         print(row_format.format(*row))

@@ -1,12 +1,12 @@
-soundfile example/signals/speech2_48000_mono.wav
+soundfile ../../example/signals/speech2_48000_mono.wav
 blockSize 512
 ds_filterSize 256
 early_filterSize 3072
 late_filterSize 48640
 directivity_filterSize 512
 filterSource[mat/wav] mat
-filterDatabase example/brirs/example_mat.mat
-filterList example/brirs/filtermap_example.txt
+filterDatabase ../../example/brirs/example_mat_hp.mat
+filterList ../../example/brirs/filtermap_example.txt
 maxChannels 1
 samplingRate 48000
 enableCrossfading True
