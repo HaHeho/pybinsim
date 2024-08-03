@@ -4,21 +4,31 @@ from collections import namedtuple
 import numpy as np
 
 
-class Orientation(namedtuple('Orientation', ['yaw', 'pitch', 'roll'])):
+class Orientation(namedtuple("Orientation", ["yaw", "pitch", "roll"])):
     pass
 
 
-class Position(namedtuple('Position', ['x', 'y', 'z'])):
+class Position(namedtuple("Position", ["x", "y", "z"])):
     pass
 
 
-class Custom(namedtuple('CustomValues', ['a', 'b', 'c'])):
+class Custom(namedtuple("CustomValues", ["a", "b", "c"])):
     pass
 
 
 class Pose:
-    def __init__(self, listener_orientation, listener_position, custom=Custom(0, 0, 0,),
-                 source_orientation=Orientation(0, 0, 0), source_position=Position(0, 0, 0)):
+    def __init__(
+        self,
+        listener_orientation,
+        listener_position,
+        custom=Custom(
+            0,
+            0,
+            0,
+        ),
+        source_orientation=Orientation(0, 0, 0),
+        source_position=Position(0, 0, 0),
+    ):
         self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
         # self.log.info("Init")
 
@@ -29,47 +39,78 @@ class Pose:
         self.custom = custom
 
     def create_key(self):
-        return (self.listener_orientation, self.listener_position, self.source_orientation, self.source_position, self.custom)
+        return (
+            self.listener_orientation,
+            self.listener_position,
+            self.source_orientation,
+            self.source_position,
+            self.custom,
+        )
 
     @staticmethod
     def from_filterValueList(filter_value_list):
-
-        #filter_value_list = np.squeeze(np.asarray(filter_value_list, dtype=np.int16))
-        filter_value_list = np.squeeze(np.asarray(filter_value_list, dtype=np.float32).round(2))
+        # filter_value_list = np.squeeze(
+        #     np.asarray(filter_value_list, dtype=np.int16)
+        # )
+        filter_value_list = np.squeeze(
+            np.asarray(filter_value_list, dtype=np.float32).round(2)
+        )
         # format: listener_orientation - listener_position - custom
         if len(filter_value_list) == 9:
             listener_orientation = Orientation(
-                filter_value_list[0], filter_value_list[1], filter_value_list[2])
+                filter_value_list[0], filter_value_list[1], filter_value_list[2]
+            )
             listener_position = Position(
-                filter_value_list[3], filter_value_list[4], filter_value_list[5])
+                filter_value_list[3], filter_value_list[4], filter_value_list[5]
+            )
             custom = Custom(
-                filter_value_list[6], filter_value_list[7], filter_value_list[8])
+                filter_value_list[6], filter_value_list[7], filter_value_list[8]
+            )
 
             return Pose(listener_orientation, listener_position, custom)
 
-        # format: listener_orientation - listener_position - source_orientation - source_position - custom
+        # format: listener_orientation - listener_position - source_orientation
+        # - source_position - custom
         if len(filter_value_list) == 15:
             listener_orientation = Orientation(
-                filter_value_list[0], filter_value_list[1], filter_value_list[2])
+                filter_value_list[0], filter_value_list[1], filter_value_list[2]
+            )
             listener_position = Position(
-                filter_value_list[3], filter_value_list[4], filter_value_list[5])
+                filter_value_list[3], filter_value_list[4], filter_value_list[5]
+            )
             source_orientation = Orientation(
-                filter_value_list[6], filter_value_list[7], filter_value_list[8])
+                filter_value_list[6], filter_value_list[7], filter_value_list[8]
+            )
             source_position = Position(
-                filter_value_list[9], filter_value_list[10], filter_value_list[11])
+                filter_value_list[9],
+                filter_value_list[10],
+                filter_value_list[11],
+            )
             custom = Custom(
-                filter_value_list[12], filter_value_list[13], filter_value_list[14])
+                filter_value_list[12],
+                filter_value_list[13],
+                filter_value_list[14],
+            )
 
-            return Pose(listener_orientation, listener_position, custom, source_orientation, source_position)
+            return Pose(
+                listener_orientation,
+                listener_position,
+                custom,
+                source_orientation,
+                source_position,
+            )
 
-        raise RuntimeError(
-            "Unable to parse filter list: {}".format(filter_value_list))
-        #Todo: Add info were reading failed
+        raise RuntimeError(f"Unable to parse filter list: {filter_value_list}")
+        # Todo: Add info were reading failed
 
 
 class SourcePose:
-    def __init__(self, source_orientation=Orientation(0, 0, 0),
-                 source_position=Position(0, 0, 0), custom=Custom(0, 0, 0)):
+    def __init__(
+        self,
+        source_orientation=Orientation(0, 0, 0),
+        source_position=Position(0, 0, 0),
+        custom=Custom(0, 0, 0),
+    ):
         self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
         # self.log.info("Init")
 
@@ -82,20 +123,25 @@ class SourcePose:
 
     @staticmethod
     def from_filterValueList(filter_value_list):
-
-        #filter_value_list = np.squeeze(np.asarray(filter_value_list, dtype=np.int16))
-        filter_value_list = np.squeeze(np.asarray(filter_value_list, dtype=np.float32).round(2))
+        # filter_value_list = np.squeeze(
+        #     np.asarray(filter_value_list, dtype=np.int16)
+        # )
+        filter_value_list = np.squeeze(
+            np.asarray(filter_value_list, dtype=np.float32).round(2)
+        )
 
         # 'new' format: source_orientation - source_position - custom
         if len(filter_value_list) == 9:
             source_orientation = Orientation(
-                filter_value_list[0], filter_value_list[1], filter_value_list[2])
+                filter_value_list[0], filter_value_list[1], filter_value_list[2]
+            )
             source_position = Position(
-                filter_value_list[3], filter_value_list[4], filter_value_list[5])
+                filter_value_list[3], filter_value_list[4], filter_value_list[5]
+            )
             custom = Custom(
-                filter_value_list[6], filter_value_list[7], filter_value_list[8])
+                filter_value_list[6], filter_value_list[7], filter_value_list[8]
+            )
 
             return SourcePose(source_orientation, source_position, custom)
 
-        raise RuntimeError(
-            "Unable to parse filter list: {}".format(filter_value_list))
+        raise RuntimeError(f"Unable to parse filter list: {filter_value_list}")

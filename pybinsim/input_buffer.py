@@ -21,11 +21,8 @@
 # SOFTWARE.
 
 import logging
-import pickle
-from pathlib import Path
 from timeit import default_timer
 
-import numpy as np
 import torch
 
 
@@ -48,15 +45,25 @@ class InputBufferMulti(object):
         self.inputs = inputs
 
         # Create Input Buffers
-        self.buffer = torch.zeros(self.inputs, self.block_size * 2, dtype=torch.float32, device=self.torch_device)
+        self.buffer = torch.zeros(
+            self.inputs,
+            self.block_size * 2,
+            dtype=torch.float32,
+            device=self.torch_device,
+        )
 
-        self.fft_buffer = torch.zeros(self.inputs, self.block_size + 1, dtype=torch.complex64, device=self.torch_device)
+        self.fft_buffer = torch.zeros(
+            self.inputs,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
 
         self.processCounter = 0
 
         end = default_timer()
         delta = end - start
-        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta*1e3:.2} ms"
+        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta * 1e3:.2} ms"
         self.log.info(f"Finished init (took {delta_str})")
 
     def get_counter(self):
@@ -81,10 +88,10 @@ class InputBufferMulti(object):
         :return: None
         """
         # shift buffer
-        self.buffer[:, :self.block_size] = self.buffer[:, self.block_size:]
+        self.buffer[:, : self.block_size] = self.buffer[:, self.block_size :]
 
         # insert new block to buffer
-        self.buffer[:, self.block_size:] = block
+        self.buffer[:, self.block_size :] = block
 
         torch.fft.rfftn(self.buffer, dim=1, out=self.fft_buffer)
         return self.fft_buffer
@@ -96,10 +103,16 @@ class InputBufferMulti(object):
         :param block:
         :return: output
         """
-        #print(block.shape[0])
-        #if block.shape[1] < self.block_size:
-        #   print("block to small - should not happen")
-            #block = np.concatenate((block, np.zeros(self.inputs, self.block_size-block.size(dim=1))), 1)
+        # print(block.shape[0])
+        # if block.shape[1] < self.block_size:
+        #     print("block to small - should not happen")
+        #     block = np.concatenate(
+        #         (
+        #             block,
+        #             np.zeros(self.inputs, self.block_size - block.size(dim=1)),
+        #         ),
+        #         1,
+        #     )
 
         output = self.fill_buffer(block)
 
@@ -109,4 +122,3 @@ class InputBufferMulti(object):
 
     def close(self):
         self.log.info("Close")
-

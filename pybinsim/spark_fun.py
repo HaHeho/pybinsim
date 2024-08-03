@@ -31,7 +31,7 @@ import re
 import serial
 
 
-def get_intact_reading(sensor_reading, prefix='!ANG:'):
+def get_intact_reading(sensor_reading, prefix="!ANG:"):
     """
     Return last intact sensor data (i.e., the newest) in a list of readings.
     :param sensor_reading: List of sender readings, e.g. from read_all() split into lines.
@@ -39,13 +39,12 @@ def get_intact_reading(sensor_reading, prefix='!ANG:'):
     :return: CSV string without prefix. None if parsing failed.
     """
     digit_regex = r"(([-]?\d*\.\d+)|[-]?\d+)?"
-    reading_regex = r"{}{},{},{}".format(
-        prefix, digit_regex, digit_regex, digit_regex)
+    reading_regex = rf"{prefix}{digit_regex},{digit_regex},{digit_regex}"
 
     for item in reversed(sensor_reading):
         item = item.strip()
         if re.match(reading_regex, item):
-            return item[len(prefix):]
+            return item[len(prefix) :]
     return None
 
 
@@ -94,7 +93,7 @@ class Spark9dof(object):
     Class allows access to Yaw, Pitch, Roll Data of spark fun's 9DoF Board.
     """
 
-    def __init__(self, com_port='COM4', baudrate=57600):
+    def __init__(self, com_port="COM4", baudrate=57600):
         """
         Initiializes Serial connection to 9DOF board
         :param com_port: COM Port, defaults to 'COM4'.

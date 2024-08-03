@@ -1,10 +1,9 @@
-import logging
 import threading
-import numpy as np
-import zmq
-from pybinsim.pkg_receiver import PkgReceiver
 
-from pybinsim.soundhandler import PlayState, SoundHandler, LoopState
+import zmq
+
+from pybinsim.pkg_receiver import PkgReceiver
+from pybinsim.soundhandler import SoundHandler
 
 
 class ZmqReceiver(PkgReceiver):
@@ -17,9 +16,9 @@ class ZmqReceiver(PkgReceiver):
         self.log.info("Init")
 
         # Basic settings
-        # self.ip = current_config.get('zmq_ip')
-        # self.port = current_config.get('zmq_port')
-        # self.proto = current_config.get('zmq_protocol')
+        # self.ip = current_config.get("zmq_ip")
+        # self.port = current_config.get("zmq_port")
+        # self.proto = current_config.get("zmq_protocol")
         # self.maxChannels = 100
         #
         # self.currentConfig = current_config
@@ -31,12 +30,18 @@ class ZmqReceiver(PkgReceiver):
         #
         # self.default_filter_value = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
         #
-        # self.valueList_ds_filter = np.tile(self.default_filter_value, [self.maxChannels, 1])
-        # self.valueList_early_filter = np.tile(self.default_filter_value, [self.maxChannels, 1])
-        # self.valueList_late_filter = np.tile(self.default_filter_value, [self.maxChannels, 1])
+        # self.valueList_ds_filter = np.tile(
+        #     self.default_filter_value, [self.maxChannels, 1]
+        # )
+        # self.valueList_early_filter = np.tile(
+        #     self.default_filter_value, [self.maxChannels, 1]
+        # )
+        # self.valueList_late_filter = np.tile(
+        #     self.default_filter_value, [self.maxChannels, 1]
+        # )
         #
         # # self.valueList = [()] * self.maxChannels
-        # self.soundFileList = ''
+        # self.soundFileList = ""
         # self.soundFileNew = False
 
         self.zmq_map = {
@@ -73,12 +78,14 @@ class ZmqReceiver(PkgReceiver):
         }
 
         self.run_thread = False
-        self.zmq_thread = threading.Thread(target=self.listen, args=(self.proto, self.ip, str(self.port)))
+        self.zmq_thread = threading.Thread(
+            target=self.listen, args=(self.proto, self.ip, str(self.port))
+        )
 
     def start_listening(self):
         """Start osc receiver in background Thread"""
 
-        self.log.info(f'Serving on {self.ip}:{self.port}')
+        self.log.info(f"Serving on {self.ip}:{self.port}")
 
         self.run_thread = True
         self.zmq_thread.daemon = True
@@ -103,10 +110,10 @@ class ZmqReceiver(PkgReceiver):
         zmq_context = zmq.Context.instance()
 
         # Choose DISH-RADIO pattern if using UDP
-        if protocol == 'udp':
+        if protocol == "udp":
             zmq_socket = zmq_context.socket(zmq.DISH)
             # DISH needs to join a group or it won't receive anything
-            zmq_socket.join('binsim')
+            zmq_socket.join("binsim")
         else:
             zmq_socket = zmq_context.socket(zmq.ROUTER)
 
@@ -115,7 +122,11 @@ class ZmqReceiver(PkgReceiver):
         # bind_addr = 'tcp://127.0.0.1:10001'
         # or like this if using ipc (this points to a file which may or may not yet exist)
         # bind_addr = 'ipc://./_ipc'
-        bind_addr = protocol + '://' + ip if protocol == 'ipc' else protocol + '://' + ip + ':' + port
+        bind_addr = (
+            f"{protocol}://{ip}"
+            if protocol == "ipc"
+            else f"{protocol}://{ip}:{port}"
+        )
         zmq_socket.bind(bind_addr)
 
         while self.run_thread:
@@ -127,7 +138,7 @@ class ZmqReceiver(PkgReceiver):
                     # First part of message is always the remote id - might be useful in the future to separate clients
                     # remote_id is NOT sent by RADIO, so if we use udp/DISH we need to disable this
                     # NOTE: in any productive system this should probably be removed
-                    if protocol != 'udp':
+                    if protocol != "udp":
                         remote_id = zmq_socket.recv()
                         # self.log.info(remote_id)
 
@@ -146,7 +157,7 @@ class ZmqReceiver(PkgReceiver):
                 except zmq.ZMQError:
                     # TODO: error handling if necessary
                     pass
-        
+
         zmq_socket.close()
         zmq_context.term()
         return
@@ -161,12 +172,15 @@ class ZmqReceiver(PkgReceiver):
         """
         num_com = int(commands)
         if len(args) == num_com:
-            # Traverse list of subcommands and just call the appropriate functions according to our map
+            # Traverse list of subcommands and just call the appropriate
+            # functions according to our map
             for subcommand in args:
                 self.zmq_map[subcommand[0]](*subcommand)
                 # self.log.info(subcommand)
         else:
-            self.log.warning('Given number of subcommands not equal to actual list of subcommands.')
+            self.log.warning(
+                "Given number of subcommands not equal to actual list of subcommands."
+            )
 
     def close(self):
         """
@@ -174,6 +188,6 @@ class ZmqReceiver(PkgReceiver):
 
         :return: None
         """
-        self.log.info('Close')
+        self.log.info("Close")
         self.run_thread = False
         self.zmq_thread.join(timeout=3)

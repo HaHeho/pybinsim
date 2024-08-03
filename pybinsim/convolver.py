@@ -21,20 +21,30 @@
 # SOFTWARE.
 
 import logging
+import math
 from timeit import default_timer
 from typing import List
-import math
+
 import torch
 
 from pybinsim.filterstorage import Filter
 
+
 class ConvolverTorch(object):
     """
-    Class for convolving mono (usually for virtual sources) or stereo input (usually for HP compensation)
-    with a BRIRsor HRTF
+    Class for convolving mono (usually for virtual sources) or stereo input
+    (usually for HP compensation) with a BRIRsor HRTF
     """
 
-    def __init__(self, ir_size: int, block_size: int, stereoInput: bool, sources: int, interpolate: bool, torch_settings: str):
+    def __init__(
+        self,
+        ir_size: int,
+        block_size: int,
+        stereoInput: bool,
+        sources: int,
+        interpolate: bool,
+        torch_settings: str,
+    ):
         start = default_timer()
 
         self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
@@ -56,40 +66,97 @@ class ConvolverTorch(object):
         # floor (integer) division in python 2 & 3
         self.IR_blocks = self.IR_size // block_size
 
-        block_time_in_samples = torch.arange(0, self.block_size, dtype=torch.float32)
-        crossFadeOut = torch.square(torch.cos(block_time_in_samples/(self.block_size-1)*(torch.tensor(math.pi)/2)))
+        block_time_in_samples = torch.arange(
+            0, self.block_size, dtype=torch.float32
+        )
+        crossFadeOut = torch.square(
+            torch.cos(
+                block_time_in_samples
+                / (self.block_size - 1)
+                * (torch.tensor(math.pi) / 2)
+            )
+        )
         crossFadeIn = torch.flipud(crossFadeOut)
-        self.crossFadeIn = torch.as_tensor(crossFadeIn, dtype=torch.float32, device=self.torch_device)
-        self.crossFadeOut = torch.as_tensor(crossFadeOut, dtype=torch.float32, device=self.torch_device)
+        self.crossFadeIn = torch.as_tensor(
+            crossFadeIn, dtype=torch.float32, device=self.torch_device
+        )
+        self.crossFadeOut = torch.as_tensor(
+            crossFadeOut, dtype=torch.float32, device=self.torch_device
+        )
 
         # Filter format: [2, nBlocks*sources, blockSize+1] (2 for left, right)
-        self.filters_blocked = torch.zeros(2, self.IR_blocks*self.sources, self.block_size + 1, dtype=torch.complex64,
-                                           device=self.torch_device)
-        
-        self.filters_cpu = torch.zeros(2, self.IR_blocks*self.sources, self.block_size + 1, dtype=torch.complex64,
-                                           device="cpu")
+        self.filters_blocked = torch.zeros(
+            2,
+            self.IR_blocks * self.sources,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
+
+        self.filters_cpu = torch.zeros(
+            2,
+            self.IR_blocks * self.sources,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device="cpu",
+        )
         if self.torch_device.type == "cuda":
             self.filters_cpu = self.filters_cpu.pin_memory()
 
-        self.complex_buffer = torch.zeros(2, self.IR_blocks*self.sources, self.block_size + 1, dtype=torch.complex64,
-                                           device=self.torch_device)
+        self.complex_buffer = torch.zeros(
+            2,
+            self.IR_blocks * self.sources,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
 
-        self.previous_filters_blocked = torch.zeros(2, self.IR_blocks*self.sources, self.block_size + 1, dtype=torch.complex64,
-                                           device=self.torch_device)
+        self.previous_filters_blocked = torch.zeros(
+            2,
+            self.IR_blocks * self.sources,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
 
         self.temp = self.previous_filters_blocked
 
-        self.frequency_domain_input = torch.zeros(2, self.IR_blocks*self.sources, self.block_size + 1, dtype=torch.complex64,
-                               device=self.torch_device)
+        self.frequency_domain_input = torch.zeros(
+            2,
+            self.IR_blocks * self.sources,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
 
         # Arrays for the result of the complex multiply and add
-        self.resultFreq = torch.zeros(2, 1, self.block_size + 1, dtype=torch.complex64, device=self.torch_device)
+        self.resultFreq = torch.zeros(
+            2,
+            1,
+            self.block_size + 1,
+            dtype=torch.complex64,
+            device=self.torch_device,
+        )
 
         # Result of the ifft is stored here
-        self.outputEmpty = torch.zeros(2, 1, self.block_size, dtype=torch.float32, device=self.torch_device)
+        self.outputEmpty = torch.zeros(
+            2, 1, self.block_size, dtype=torch.float32, device=self.torch_device
+        )
 
-        self.irfft_buffer1 = torch.zeros(2, 1, self.block_size*2, dtype=torch.float32, device=self.torch_device)
-        self.irfft_buffer2 = torch.zeros(2, 1, self.block_size*2, dtype=torch.float32, device=self.torch_device)
+        self.irfft_buffer1 = torch.zeros(
+            2,
+            1,
+            self.block_size * 2,
+            dtype=torch.float32,
+            device=self.torch_device,
+        )
+        self.irfft_buffer2 = torch.zeros(
+            2,
+            1,
+            self.block_size * 2,
+            dtype=torch.float32,
+            device=self.torch_device,
+        )
 
         # Counts how often process() is called
         self.processCounter = 0
@@ -100,7 +167,7 @@ class ConvolverTorch(object):
 
         end = default_timer()
         delta = end - start
-        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta*1e3:.2} ms"
+        delta_str = f"{delta:.1} s" if delta > 1 else f"{delta * 1e3:.2} ms"
         self.log.info(f"Finished init (took {delta_str})")
 
     def get_counter(self):
@@ -113,17 +180,19 @@ class ConvolverTorch(object):
     def setAllFilters(self, filters: List[Filter]):
         self.saveOldFilters()
         # start copy on GPU
-        # ready temp with current values and make current, previous will just keep the current values
+        # ready temp with current values and make current, previous will just
+        # keep the current values
         self.temp.copy_(self.filters_blocked, non_blocking=True)
 
         # swap previous and current
         self.filters_blocked = self.temp
-        # make sure previous is still kept in temp, so we can later reassign previous
+        # make sure previous is still kept in temp, so we can later reassign
+        # previous
         self.temp = self.previous_filters_blocked
 
         # assemble new filter Tensors on CPU in pinned memory
         for i in range(self.sources):
-            self.filters_cpu[:, i::self.sources, :] = filters[i].getFilterFD()
+            self.filters_cpu[:, i :: self.sources, :] = filters[i].getFilterFD()
 
         # write new filters to GPU
         self.filters_blocked.copy_(self.filters_cpu, non_blocking=True)
@@ -136,20 +205,30 @@ class ConvolverTorch(object):
             return self.outputEmpty
 
         # shift frequency_domain_inputs
-        self.frequency_domain_input = torch.roll(self.frequency_domain_input, self.sources, dims=1)
+        self.frequency_domain_input = torch.roll(
+            self.frequency_domain_input, self.sources, dims=1
+        )
 
         # copy input buffers to frequency_domain_inputs
         if self.stereoInput:
-            self.frequency_domain_input[0, :self.sources, :] = input_buffer[0,:]
-            self.frequency_domain_input[1, :self.sources, :] = input_buffer[1,:]
+            self.frequency_domain_input[0, : self.sources, :] = input_buffer[
+                0, :
+            ]
+            self.frequency_domain_input[1, : self.sources, :] = input_buffer[
+                1, :
+            ]
         else:
-            self.frequency_domain_input[0, :self.sources, :] = input_buffer
-            self.frequency_domain_input[1, :self.sources, :] = input_buffer
+            self.frequency_domain_input[0, : self.sources, :] = input_buffer
+            self.frequency_domain_input[1, : self.sources, :] = input_buffer
 
-        output = self.multiply_accumulate_ifft(self.filters_blocked, self.irfft_buffer1)
+        output = self.multiply_accumulate_ifft(
+            self.filters_blocked, self.irfft_buffer1
+        )
 
         if self.interpolate:
-            output_previous = self.multiply_accumulate_ifft(self.previous_filters_blocked, self.irfft_buffer2)
+            output_previous = self.multiply_accumulate_ifft(
+                self.previous_filters_blocked, self.irfft_buffer2
+            )
             output.mul_(self.crossFadeIn)
             output_previous.mul_(self.crossFadeOut)
             output.add_(output_previous)
@@ -162,12 +241,18 @@ class ConvolverTorch(object):
         return output
 
     def multiply_accumulate_ifft(self, filters_blocked, irfft_buffer):
-            torch.multiply(filters_blocked, self.frequency_domain_input, out=self.complex_buffer)
-            
-            # accumulate over blocks and channels for each time and left/right
-            torch.sum(self.complex_buffer, keepdim=True, dim=1, out=self.resultFreq)
+        torch.multiply(
+            filters_blocked,
+            self.frequency_domain_input,
+            out=self.complex_buffer,
+        )
 
-            return torch.fft.irfft(self.resultFreq, out=irfft_buffer, dim=2)[:, :, self.block_size:self.block_size * 2]
+        # accumulate over blocks and channels for each time and left/right
+        torch.sum(self.complex_buffer, keepdim=True, dim=1, out=self.resultFreq)
+
+        return torch.fft.irfft(self.resultFreq, out=irfft_buffer, dim=2)[
+            :, :, self.block_size : self.block_size * 2
+        ]
 
     def close(self):
         self.log.info("Close")

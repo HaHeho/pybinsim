@@ -7,7 +7,9 @@ from pybinsim.application import BinSim
 def init_logging():
     console_handler = logging.StreamHandler()
     formatter = logging.Formatter(
-        '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(name)s - %(message)s')
+        "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - "
+        "%(name)s - %(message)s"
+    )
     console_handler.setFormatter(formatter)
     log = logging.getLogger(__package__)
     log.addHandler(console_handler)

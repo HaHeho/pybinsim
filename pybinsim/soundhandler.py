@@ -22,12 +22,12 @@
 
 import logging
 import threading
-from typing import Any, Final
 from dataclasses import dataclass
+from typing import Any, Final
 
 import numpy as np
 
-from pybinsim.player import LoopState, PlayState, Player
+from pybinsim.player import LoopState, Player, PlayState
 
 
 class SoundHandler(object):
@@ -39,13 +39,13 @@ class SoundHandler(object):
     Thread Safety
     -------------
     All public methods are thread-safe with the exception of `get_block` and
-    `get_zeros`, which both should only be called from one thread. 
+    `get_zeros`, which both should only be called from one thread.
 
     The `_players` dict has to be iterated in `get_block` to get the audio from
     all players, hence the dict keys must not be modified while `get_block` is
     running. To ensure this, `_players_lock` must be acquired before all
     insertions/removals. Keep locked code as short as possible to avoid blocking
-    the audio thread. 
+    the audio thread.
 
     The data from the player entries is used multiple times during
     add_at_start_channel. To ensure consistency during such non-atomic read
@@ -66,15 +66,25 @@ class SoundHandler(object):
         self._players_lock = threading.Lock()
 
         self._output_buffer = np.zeros(
-            (self._n_channels, self._block_size), dtype=np.float32)
+            (self._n_channels, self._block_size), dtype=np.float32
+        )
 
-    def create_player(self, filepaths, player_name, start_channel=0, loop_state=LoopState.SINGLE, play_state=PlayState.PLAYING, volume=1.):
+    def create_player(
+        self,
+        filepaths,
+        player_name,
+        start_channel=0,
+        loop_state=LoopState.SINGLE,
+        play_state=PlayState.PLAYING,
+        volume=1.0,
+    ):
         entry = PlayerEntry(
-            Player(filepaths, play_state, loop_state,
-                   self._block_size, self._fs),
+            Player(
+                filepaths, play_state, loop_state, self._block_size, self._fs
+            ),
             start_channel,
             volume,
-            threading.Lock()
+            threading.Lock(),
         )
         with self._players_lock:
             self._players[player_name] = entry
@@ -103,7 +113,7 @@ class SoundHandler(object):
         with entry.lock:
             entry.volume = volume
 
-    def get_block(self, loudness=1.):
+    def get_block(self, loudness=1.0):
         """Get the next block of audio with shape (`n_channels`, `block_size`).
 
         Player channels outside the valid range will be silent.
@@ -114,7 +124,7 @@ class SoundHandler(object):
         This function is *not thread safe* and, together with `get_zeros`,
         should only be called from one thread.
         """
-        self._output_buffer.fill(0.)
+        self._output_buffer.fill(0.0)
         with self._players_lock:
             for entry in self._players.values():
                 with entry.lock:
@@ -123,8 +133,10 @@ class SoundHandler(object):
                         continue
                     volume = entry.volume * loudness
                     add_at_start_channel(
-                        self._output_buffer, volume * block, entry.start_channel)
-            # TODO This might be better done in a background thread so it doesn't block the audio thread, but that needs some benchmarking
+                        self._output_buffer, volume * block, entry.start_channel
+                    )
+            # TODO This might be better done in a background thread so it
+            #  doesn't block the audio thread, but that needs some benchmarking
             self._remove_stopped_players()
         return self._output_buffer
 
@@ -137,12 +149,15 @@ class SoundHandler(object):
         This function is *not thread safe* and, together with `get_block`,
         should only be called from one thread.
         """
-        self._output_buffer.fill(0.)
+        self._output_buffer.fill(0.0)
         return self._output_buffer
 
     def _remove_stopped_players(self):
-        players_to_delete = [name for (name, entry) in self._players.items(
-        ) if entry.player.play_state == PlayState.STOPPED]
+        players_to_delete = [
+            name
+            for (name, entry) in self._players.items()
+            if entry.player.play_state == PlayState.STOPPED
+        ]
         for name in players_to_delete:
             self._players.pop(name)
 
@@ -156,9 +171,10 @@ class PlayerEntry:
 
 
 def add_at_start_channel(output, input, start_channel):
-    """Add input to output at specified start_channel, ignoring channels outside of output."""
+    """Add input to output at specified start_channel, ignoring channels
+    outside of output."""
     input_start = max(0, -start_channel)
-    input_stop = max(min(input.shape[0], output.shape[0]-start_channel), 0)
+    input_stop = max(min(input.shape[0], output.shape[0] - start_channel), 0)
     output_start = max(0, start_channel)
     output_stop = max(start_channel + input.shape[0], 0)
     output[output_start:output_stop, :] += input[input_start:input_stop, :]

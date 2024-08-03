@@ -3,15 +3,14 @@
 
 """Helper functions for working with audio files in NumPy."""
 import contextlib
-
-from sys import getsizeof, stderr
-from itertools import chain
 from collections import deque
+from itertools import chain
+from sys import getsizeof, stderr
 
 import numpy as np
 
 
-def pcm2float(sig, dtype='float64'):
+def pcm2float(sig, dtype="float64"):
     """Convert PCM signal to floating point with a range from -1 to 1.
     Use dtype='float32' for single precision.
     Parameters
@@ -29,10 +28,10 @@ def pcm2float(sig, dtype='float64'):
     float2pcm, dtype
     """
     sig = np.asarray(sig)
-    if sig.dtype.kind not in 'iu':
+    if sig.dtype.kind not in "iu":
         raise TypeError("'sig' must be an array of integers")
     dtype = np.dtype(dtype)
-    if dtype.kind != 'f':
+    if dtype.kind != "f":
         raise TypeError("'dtype' must be a floating point type")
 
     i = np.iinfo(sig.dtype)
@@ -41,7 +40,7 @@ def pcm2float(sig, dtype='float64'):
     return (sig.astype(dtype) - offset) / abs_max
 
 
-def float2pcm(sig, dtype='int16'):
+def float2pcm(sig, dtype="int16"):
     """Convert floating point signal with a range from -1 to 1 to PCM.
     Any signal values outside the interval [-1.0, 1.0) are clipped.
     No dithering is used.
@@ -65,10 +64,10 @@ def float2pcm(sig, dtype='int16'):
     pcm2float, dtype
     """
     sig = np.asarray(sig)
-    if sig.dtype.kind != 'f':
+    if sig.dtype.kind != "f":
         raise TypeError("'sig' must be a float array")
     dtype = np.dtype(dtype)
-    if dtype.kind not in 'iu':
+    if dtype.kind not in "iu":
         raise TypeError("'dtype' must be an integer type")
 
     i = np.iinfo(dtype)
@@ -101,18 +100,18 @@ def pcm24to32(data, channels=1, normalize=True):
         (``normalize=False``).
     """
     if len(data) % 3 != 0:
-        raise ValueError('Size of data must be a multiple of 3 bytes')
+        raise ValueError("Size of data must be a multiple of 3 bytes")
 
-    out = np.zeros(len(data) // 3, dtype='<i4')
+    out = np.zeros(len(data) // 3, dtype="<i4")
     out.shape = -1, channels
-    temp = out.view('uint8').reshape(-1, 4)
+    temp = out.view("uint8").reshape(-1, 4)
     if normalize:
         # write to last 3 columns, leave LSB at zero
         columns = slice(1, None)
     else:
         # write to first 3 columns, leave MSB at zero
         columns = slice(None, -1)
-    temp[:, columns] = np.frombuffer(data, dtype='uint8').reshape(-1, 3)
+    temp[:, columns] = np.frombuffer(data, dtype="uint8").reshape(-1, 3)
     return out
 
 
@@ -132,7 +131,7 @@ def printoptions(*args, **kwargs):
 # taken from https://code.activestate.com/recipes/577504/ as recommended by
 # https://docs.python.org/3.5/library/sys.html#sys.getsizeof
 def total_size(o, handlers={}, verbose=False):
-    """ Returns the approximate memory footprint an object and all of its contents.
+    """Returns the approximate memory footprint an object and all of its contents.
 
     Automatically finds the contents of the following builtin containers and
     their subclasses:  tuple, list, deque, dict, set and frozenset.
@@ -142,21 +141,25 @@ def total_size(o, handlers={}, verbose=False):
                     OtherContainerClass: OtherContainerClass.get_elements}
 
     """
-    def dict_handler(d): return chain.from_iterable(d.items())
-    all_handlers = {tuple: iter,
-                    list: iter,
-                    deque: iter,
-                    dict: dict_handler,
-                    set: iter,
-                    frozenset: iter,
-                    }
-    all_handlers.update(handlers)     # user handlers take precedence
-    seen = set()                      # track which object id's have already been seen
+
+    def dict_handler(d):
+        return chain.from_iterable(d.items())
+
+    all_handlers = {
+        tuple: iter,
+        list: iter,
+        deque: iter,
+        dict: dict_handler,
+        set: iter,
+        frozenset: iter,
+    }
+    all_handlers.update(handlers)  # user handlers take precedence
+    seen = set()  # track which object id's have already been seen
     # estimate sizeof object without __sizeof__
     default_size = getsizeof(0)
 
     def sizeof(o):
-        if id(o) in seen:       # do not double count the same object
+        if id(o) in seen:  # do not double count the same object
             return 0
         seen.add(id(o))
         s = getsizeof(o, default_size)
