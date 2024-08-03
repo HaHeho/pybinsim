@@ -1,0 +1,13 @@
+# Based on
+# https://www.stefanjudis.com/today-i-learned/how-to-exclude-commits-from-git-blame/
+#
+# Run this command to always ignore formatting commits in `git blame`
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# This is picked up automatically on GitHub since the file is called
+# .git-blame-ignore-revs
+#
+# New git revision numbers can be appended to this file if needed.
+
+# Apply `black` (v23.3.0) to entire code base
+3adc40e6e6e0f9da3c5812858774dda22d078630
