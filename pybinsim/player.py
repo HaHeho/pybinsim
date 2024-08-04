@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, wait
-from enum import Enum
+from enum import auto, Enum
 from pathlib import Path
 from queue import Empty, SimpleQueue
 from typing import Final, List
@@ -8,8 +8,17 @@ from typing import Final, List
 import numpy as np
 import soundfile as sf
 
-PlayState = Enum("PlayState", ("PLAYING PAUSED STOPPED"))
-LoopState = Enum("LoopState", ("SINGLE LOOP"))
+
+class PlayState(Enum):
+    PLAYING = auto()
+    PAUSED = auto()
+    STOPPED = auto()
+
+
+class LoopState(Enum):
+    SINGLE = auto()
+    LOOP = auto()
+
 
 PLAYBACK_QUEUE_MINIMUM_SIZE = 4
 

@@ -20,9 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import enum
 import logging
 import time
+from enum import auto, Enum
 from pathlib import Path
 
 import numpy as np
@@ -108,13 +108,13 @@ class Filter(object):
             return self.TF_blocked
 
 
-class FilterType(enum.Enum):
-    Undefined = 0
-    ds_Filter = 1
-    early_Filter = 2
-    late_Filter = 3
-    headphone_Filter = 4
-    directivity_Filter = 5
+class FilterType(Enum):
+    Undefined = auto()
+    ds_Filter = auto()
+    early_Filter = auto()
+    late_Filter = auto()
+    headphone_Filter = auto()
+    directivity_Filter = auto()
 
 
 class FilterStorage(object):
