@@ -118,7 +118,7 @@ def pcm24to32(data, channels=1, normalize=True):
 @contextlib.contextmanager
 def printoptions(*args, **kwargs):
     """Context manager for temporarily setting NumPy print options.
-    See http://stackoverflow.com/a/2891805/500098
+    See https://stackoverflow.com/questions/2891790/pretty-print-a-numpy-array-without-scientific-notation-and-with-given-precision/2891805#2891805
     """
     original = np.get_printoptions()
     try:
@@ -130,7 +130,7 @@ def printoptions(*args, **kwargs):
 
 # taken from https://code.activestate.com/recipes/577504/ as recommended by
 # https://docs.python.org/3.5/library/sys.html#sys.getsizeof
-def total_size(o, handlers={}, verbose=False):
+def total_size(o, handlers=None, verbose=False):
     """Returns the approximate memory footprint an object and all of its contents.
 
     Automatically finds the contents of the following builtin containers and
@@ -141,6 +141,9 @@ def total_size(o, handlers={}, verbose=False):
                     OtherContainerClass: OtherContainerClass.get_elements}
 
     """
+
+    if handlers is None:
+        handlers = {}
 
     def dict_handler(d):
         return chain.from_iterable(d.items())
@@ -158,18 +161,18 @@ def total_size(o, handlers={}, verbose=False):
     # estimate sizeof object without __sizeof__
     default_size = getsizeof(0)
 
-    def sizeof(o):
-        if id(o) in seen:  # do not double count the same object
+    def sizeof(_o):
+        if id(_o) in seen:  # do not double count the same object
             return 0
-        seen.add(id(o))
-        s = getsizeof(o, default_size)
+        seen.add(id(_o))
+        s = getsizeof(_o, default_size)
 
         if verbose:
-            print(s, type(o), repr(o), file=stderr)
+            print(s, type(_o), repr(_o), file=stderr)
 
         for typ, handler in all_handlers.items():
-            if isinstance(o, typ):
-                s += sum(map(sizeof, handler(o)))
+            if isinstance(_o, typ):
+                s += sum(map(sizeof, handler(_o)))
                 break
         return s
 

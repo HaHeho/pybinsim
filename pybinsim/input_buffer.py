@@ -82,7 +82,7 @@ class InputBufferMulti(object):
 
     def fill_buffer(self, block: torch.Tensor):
         """
-        Copy mono soundblock to input Buffer;
+        Copy mono sound block to input Buffer;
         Transform to Freq. Domain and store result in FDLs
         :param block: Mono sound block
         :return: None

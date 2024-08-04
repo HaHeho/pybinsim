@@ -110,7 +110,7 @@ class BinSimConfig(object):
         return self.configurationDict[setting]
 
     def set(self, setting, value):
-        if type(self.configurationDict[setting]) == type(value):
+        if isinstance(self.configurationDict[setting], type(value)):
             self.configurationDict[setting] = value
         else:
             self.log.warning(
@@ -356,9 +356,8 @@ class BinSim(object):
         self.early_convolver.close()
         self.late_convolver.close()
 
-        if self.config.get("useHeadphoneFilter"):
-            if self.convolverHP:
-                self.convolverHP.close()
+        if self.config.get("useHeadphoneFilter") and self.convolverHP:
+            self.convolverHP.close()
 
 
 def audio_callback(binsim):
@@ -366,7 +365,7 @@ def audio_callback(binsim):
     assert isinstance(binsim, BinSim)
 
     # The python-sounddevice Callback
-    def callback(outdata, frame_count, time_info, status):
+    def callback(outdata, _frame_count, _time_info, status):
         # print("python-sounddevice callback")
         debug = "pydevd" in sys.modules
         if debug:
@@ -411,10 +410,10 @@ def audio_callback(binsim):
                                 sourceId
                             )
                         )
-                        filter = binsim.filterStorage.get_ds_filter(
+                        _filter = binsim.filterStorage.get_ds_filter(
                             Pose.from_filterValueList(filterValueList)
                         )
-                        filterList.append(filter)
+                        filterList.append(_filter)
                     binsim.ds_convolver.setAllFilters(filterList)
                     break
 
@@ -427,10 +426,10 @@ def audio_callback(binsim):
                                 sourceId
                             )
                         )
-                        filter = binsim.filterStorage.get_early_filter(
+                        _filter = binsim.filterStorage.get_early_filter(
                             Pose.from_filterValueList(filterValueList)
                         )
-                        filterList.append(filter)
+                        filterList.append(_filter)
                     binsim.early_convolver.setAllFilters(filterList)
                     break
 
@@ -443,10 +442,10 @@ def audio_callback(binsim):
                                 sourceId
                             )
                         )
-                        filter = binsim.filterStorage.get_late_filter(
+                        _filter = binsim.filterStorage.get_late_filter(
                             Pose.from_filterValueList(filterValueList)
                         )
-                        filterList.append(filter)
+                        filterList.append(_filter)
                     binsim.late_convolver.setAllFilters(filterList)
                     break
 

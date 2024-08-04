@@ -8,10 +8,10 @@ from pythonosc import udp_client
 
 
 def osc_message_load(
-    stop_flag: Event,
-    messages_per_second: Value,
-    start_message_timing: Event,
-    tx: Connection,
+    _stop_flag: Event,
+    _messages_per_second: Value,
+    _start_message_timing: Event,
+    _tx: Connection,
 ):
     """Switches azimuth between -180 and -178, until message timing is started,
     then azimuth rises from -176 to 178 and times of sending the messages are
@@ -27,27 +27,27 @@ def osc_message_load(
     ]
     # (azimuth, perf_counter_ns)
     times_sent: list[tuple[int, int]] = [(0, 0)] * 178
-    i = 0
-    j = 0
-    while not stop_flag.is_set():
-        if messages_per_second.value > 0:
-            sleep(1 / messages_per_second.value)
+    _i = 0
+    _j = 0
+    while not _stop_flag.is_set():
+        if _messages_per_second.value > 0:
+            sleep(1 / _messages_per_second.value)
         else:
             sleep(0.05)
             continue
-        client.send_message("/pyBinSim_ds_Filter", filter_keys[i])
-        if start_message_timing.is_set() and azimuths[i] > -178:
-            times_sent[j] = (azimuths[i], perf_counter_ns())
-            j += 1
-        i += 1
-        if start_message_timing.is_set():
-            if i == len(filter_keys):
-                i = 0
-                j = 0
-                start_message_timing.clear()
-                tx.send(times_sent)
+        client.send_message("/pyBinSim_ds_Filter", filter_keys[_i])
+        if _start_message_timing.is_set() and azimuths[_i] > -178:
+            times_sent[_j] = (azimuths[_i], perf_counter_ns())
+            _j += 1
+        _i += 1
+        if _start_message_timing.is_set():
+            if _i == len(filter_keys):
+                _i = 0
+                _j = 0
+                _start_message_timing.clear()
+                _tx.send(times_sent)
         else:
-            i = i % 2
+            _i = _i % 2
     print("STOPPING OSC LOAD CLIENT")
 
 
@@ -135,15 +135,15 @@ if __name__ == "__main__":
 
     row_format = "{:>8.2f} " * (len(headings))
 
-    def print_times(times, msg_per_sec):
-        _sorted = np.sort(times)
+    def print_times(_times, msg_per_sec):
+        _sorted = np.sort(_times)
         row = [
             msg_per_sec,
-            np.mean(times),
-            np.std(times),
-            *np.percentile(times, (0, 50, 99)),
+            np.mean(_times),
+            np.std(_times),
+            *np.percentile(_times, (0, 50, 99)),
             *_sorted[-4:],
-            times[0],
+            _times[0],
         ]
         print(row_format.format(*row))
 

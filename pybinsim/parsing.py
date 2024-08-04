@@ -9,15 +9,14 @@ def parse_soundfile_list(soundfile_list: str) -> list[Path]:
         return list()
 
 
-def parse_boolean(input):
-    if type(input) == str:
-        if input.lower() == "true":
-            return True
-        if input.lower() == "false":
-            return False
-    elif type(input) == bool:
-        return input
-    elif type(input) == int:
-        return input != 0  # same as bool(input)
+def parse_boolean(value):
+    if isinstance(value, str) and value.lower() == "true":
+        return True
+    elif isinstance(value, str) and value.lower() == "false":
+        return False
+    elif isinstance(value, bool):
+        return value
+    elif isinstance(value, int):
+        return value != 0  # same as bool(input)
     else:
         return None

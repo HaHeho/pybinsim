@@ -170,12 +170,12 @@ class PlayerEntry:
     lock: threading.Lock
 
 
-def add_at_start_channel(output, input, start_channel):
+def add_at_start_channel(output, _input, start_channel):
     """Add input to output at specified start_channel, ignoring channels
     outside of output."""
     input_start = max(0, -start_channel)
-    input_stop = max(min(input.shape[0], output.shape[0] - start_channel), 0)
+    input_stop = max(min(_input.shape[0], output.shape[0] - start_channel), 0)
     output_start = max(0, start_channel)
-    output_stop = max(start_channel + input.shape[0], 0)
-    output[output_start:output_stop, :] += input[input_start:input_stop, :]
+    output_stop = max(start_channel + _input.shape[0], 0)
+    output[output_start:output_stop, :] += _input[input_start:input_stop, :]
     return output

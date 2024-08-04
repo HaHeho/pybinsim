@@ -112,7 +112,7 @@ class ZmqReceiver(PkgReceiver):
         # Choose DISH-RADIO pattern if using UDP
         if protocol == "udp":
             zmq_socket = zmq_context.socket(zmq.DISH)
-            # DISH needs to join a group or it won't receive anything
+            # DISH needs to join a group, or it won't receive anything
             zmq_socket.join("binsim")
         else:
             zmq_socket = zmq_context.socket(zmq.ROUTER)
@@ -139,7 +139,8 @@ class ZmqReceiver(PkgReceiver):
                     # remote_id is NOT sent by RADIO, so if we use udp/DISH we need to disable this
                     # NOTE: in any productive system this should probably be removed
                     if protocol != "udp":
-                        remote_id = zmq_socket.recv()
+                        zmq_socket.recv()
+                        # remote_id = zmq_socket.recv()
                         # self.log.info(remote_id)
 
                     # TODO: error handling if not a pyobj
@@ -160,13 +161,12 @@ class ZmqReceiver(PkgReceiver):
 
         zmq_socket.close()
         zmq_context.term()
-        return
 
-    def handle_multi_command(self, identifier, commands, *args):
+    def handle_multi_command(self, _identifier, commands, *args):
         """
         handler for multiple subcommands
 
-        :param identifier: Command identifier "/pyBinSimMultiCommand"
+        :param _identifier: Command identifier "/pyBinSimMultiCommand"
         :param commands: Number of subcommands
         :param args: All the subcommands as list of lists
         """

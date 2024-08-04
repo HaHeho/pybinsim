@@ -216,8 +216,8 @@ class FilterStorage(object):
             self.parse_and_load_matfile()
 
     def parse_and_load_matfile(self):
-        for var in range(len(self.mat_vars)):
-            self.matvarname = self.mat_vars[var][0]
+        for var in self.mat_vars:
+            self.matvarname = var[0]
             self.log.info(f"Loading mat variable : {self.matvarname}")
 
             rows = self.matfile[self.matvarname].shape[1]
@@ -244,7 +244,7 @@ class FilterStorage(object):
                     self.headphone_filter.storeInFDomain()
                     continue
 
-                # Parse Source directiviy filters
+                # Parse Source directivity filters
                 if self.matfile[self.matvarname]["type"][0][row] == "SD":
                     filter_type = FilterType.directivity_Filter
                     filter_value_list = np.concatenate(
@@ -360,8 +360,8 @@ class FilterStorage(object):
                     self.late_filter_dict.update({key: current_filter})
 
                 else:
-                    filter_type = FilterType.Undefined
-                    raise RuntimeError("Filter indentifier wrong or missing")
+                    # filter_type = FilterType.Undefined
+                    raise RuntimeError("Filter identifier wrong or missing")
 
             # Delete parsed variable
             self.matfile.pop(self.matvarname)
@@ -416,6 +416,7 @@ class FilterStorage(object):
                     continue
 
             if line.startswith("SD"):
+                # TODO: This code is clearly wrong and needs to be fixed
                 # TODO: Should SD filters also be skipped if not used
                 #  (analogue to HP filters)?
                 filter_type = FilterType.directivity_Filter
@@ -449,8 +450,6 @@ class FilterStorage(object):
                 self.sd_filter_dict.update({key: current_filter})
                 continue
 
-            filter_type = FilterType.Undefined
-
             if line.startswith("DS"):
                 filter_type = FilterType.ds_Filter
                 filter_value_list = tuple(line_content[1:-1])
@@ -464,7 +463,7 @@ class FilterStorage(object):
                 filter_value_list = tuple(line_content[1:-1])
                 filter_pose = Pose.from_filterValueList(filter_value_list)
             else:
-                filter_type = FilterType.Undefined
+                # filter_type = FilterType.Undefined
                 raise RuntimeError("Filter identifier wrong or missing")
 
             # yield pose, filter_path
@@ -605,7 +604,7 @@ class FilterStorage(object):
 
         try:
             result_filter = self.ds_filter_dict[key]
-        except KeyError as err:
+        except KeyError:
             self.log.warning(f"Filter not found: key: {key}")
             return self.default_ds_filter
 
@@ -626,7 +625,7 @@ class FilterStorage(object):
 
         try:
             result_filter = self.early_filter_dict[key]
-        except KeyError as err:
+        except KeyError:
             self.log.warning(f"Filter not found: key: {key}")
             return self.default_early_filter
 
@@ -647,7 +646,7 @@ class FilterStorage(object):
 
         try:
             result_filter = self.late_filter_dict[key]
-        except KeyError as err:
+        except KeyError:
             self.log.warning(f"Filter not found: key: {key}")
             return self.default_late_filter
 
@@ -662,11 +661,11 @@ class FilterStorage(object):
         return self.headphone_filter
 
     def load_wav_filter(self, filter_path, filter_type):
-        current_filter, fs = sf.read(filter_path, dtype="float32")
+        current_filter, _ = sf.read(filter_path, dtype="float32")
         return self.check_filter(filter_type, current_filter)
 
     def check_filter(self, filter_type, current_filter):
-        # TODO: Check samplingrate (fs)
+        # TODO: Check sampling rate (fs)
 
         filter_size = np.shape(current_filter)
 

@@ -95,7 +95,7 @@ class Spark9dof(object):
 
     def __init__(self, com_port="COM4", baudrate=57600):
         """
-        Initiializes Serial connection to 9DOF board
+        Initializes Serial connection to 9DOF board
         :param com_port: COM Port, defaults to 'COM4'.
         :param baudrate: baudrate, defaults to 57600
         """

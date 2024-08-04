@@ -55,7 +55,8 @@ class PkgReceiver(object):
         """Start PkgReceiver thread"""
         pass
 
-    def select_slice(self, i):
+    @staticmethod
+    def select_slice(i):
         switcher = {
             "/pyBinSim_ds_Filter": slice(0, 15),
             "/pyBinSim_ds_Filter_Short": slice(0, 9),
@@ -101,7 +102,7 @@ class PkgReceiver(object):
         if len(args) == len(
             self.valueList_ds_filter[current_channel, key_slice]
         ):
-            if all(
+            if np.all(
                 args == self.valueList_ds_filter[current_channel, key_slice]
             ):
                 self.log.debug("Same direct sound filter as before")
@@ -133,7 +134,7 @@ class PkgReceiver(object):
         if len(args) == len(
             self.valueList_early_filter[current_channel, key_slice]
         ):
-            if all(
+            if np.all(
                 args == self.valueList_early_filter[current_channel, key_slice]
             ):
                 self.log.debug("Same early filter as before")
@@ -163,7 +164,7 @@ class PkgReceiver(object):
         if len(args) == len(
             self.valueList_late_filter[current_channel, key_slice]
         ):
-            if all(
+            if np.all(
                 args == self.valueList_late_filter[current_channel, key_slice]
             ):
                 self.log.debug("Same late filter as before")
@@ -197,7 +198,7 @@ class PkgReceiver(object):
         if len(args) == len(
             self.valueList_sd_filter[current_channel, key_slice]
         ):
-            if all(
+            if np.all(
                 args == self.valueList_sd_filter[current_channel, key_slice]
             ):
                 self.log.debug("Same direct sound filter as before")
@@ -216,7 +217,7 @@ class PkgReceiver(object):
         """Handler for playlist control"""
 
         assert identifier == "/pyBinSimFile"
-        assert type(soundpath) == str
+        assert isinstance(soundpath, str)
         self.soundhandler.stop_all_players()
         self.soundhandler.create_player(
             parse_soundfile_list(soundpath),
@@ -241,13 +242,11 @@ class PkgReceiver(object):
 
         if player_name is None:
             player_name = soundfile_list
-
-        # API type validation
-        assert type(soundfile_list) == str
-        assert type(start_channel) == int
-        assert type(loop) == str
+        assert isinstance(soundfile_list, str)
+        assert isinstance(start_channel, int)
+        assert isinstance(loop, str)
         volume = float(volume)
-        assert type(play) == str
+        assert isinstance(play, str)
 
         # parsing
         filepaths = parse_soundfile_list(soundfile_list)
@@ -301,7 +300,7 @@ class PkgReceiver(object):
     def handle_player_channel(self, identifier, player_name, channel):
         assert identifier == "/pyBinSimPlayerChannel"
 
-        assert type(channel) == int
+        assert isinstance(channel, int)
 
         self.soundhandler.set_player_start_channel(player_name, channel)
         self.log.info("setting player '%s' to channel %d", player_name, channel)

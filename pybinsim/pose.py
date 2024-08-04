@@ -119,7 +119,7 @@ class SourcePose:
         self.custom = custom
 
     def create_key(self):
-        return (self.source_orientation, self.source_position, self.custom)
+        return self.source_orientation, self.source_position, self.custom
 
     @staticmethod
     def from_filterValueList(filter_value_list):
