@@ -120,7 +120,6 @@ class FilterType(Enum):
 class FilterStorage(object):
     """Class for storing all filters mentioned in the filter list"""
 
-    # def __init__(self, irSize, block_size, filter_list_name):
     def __init__(
         self,
         block_size,
@@ -137,9 +136,9 @@ class FilterStorage(object):
     ):
         self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
         self.log.info("Init")
+        self.block_size = block_size
 
         self.ds_size = ds_filterSize
-        self.block_size = block_size
         self.ds_blocks = self.ds_size // self.block_size
 
         self.early_size = early_filterSize
@@ -151,31 +150,36 @@ class FilterStorage(object):
         self.sd_size = sd_filterSize
         self.sd_blocks = self.sd_size // self.block_size
 
+        self.useHeadphoneFilter = useHeadphoneFilter
+        if self.useHeadphoneFilter:
+            self.headPhoneFilterSize = headphoneFilterSize
+            self.headphone_blocks = self.headPhoneFilterSize // self.block_size
+
         self.torch_settings = torch_settings
 
         self.default_ds_filter = Filter(
-            np.zeros((self.ds_size, 2), dtype="float32"),
-            self.ds_blocks,
-            self.block_size,
-            torch_settings,
+            inputfilter=np.zeros((self.ds_size, 2), dtype="float32"),
+            irBlocks=self.ds_blocks,
+            block_size=self.block_size,
+            torch_settings=self.torch_settings,
         )
         self.default_early_filter = Filter(
-            np.zeros((self.early_size, 2), dtype="float32"),
-            self.early_blocks,
-            self.block_size,
-            torch_settings,
+            inputfilter=np.zeros((self.early_size, 2), dtype="float32"),
+            irBlocks=self.early_blocks,
+            block_size=self.block_size,
+            torch_settings=self.torch_settings,
         )
         self.default_late_filter = Filter(
-            np.zeros((self.late_size, 2), dtype="float32"),
-            self.late_blocks,
-            self.block_size,
-            torch_settings,
+            inputfilter=np.zeros((self.late_size, 2), dtype="float32"),
+            irBlocks=self.late_blocks,
+            block_size=self.block_size,
+            torch_settings=self.torch_settings,
         )
         self.default_sd_filter = Filter(
-            np.zeros((self.sd_size, 2), dtype="float32"),
-            self.sd_blocks,
-            self.block_size,
-            torch_settings,
+            inputfilter=np.zeros((self.sd_size, 2), dtype="float32"),
+            irBlocks=self.sd_blocks,
+            block_size=self.block_size,
+            torch_settings=self.torch_settings,
         )
 
         self.default_ds_filter.storeInFDomain()
@@ -183,22 +187,14 @@ class FilterStorage(object):
         self.default_late_filter.storeInFDomain()
         self.default_sd_filter.storeInFDomain()
 
-        self.useHeadphoneFilter = useHeadphoneFilter
-        if useHeadphoneFilter:
-            self.headPhoneFilterSize = headphoneFilterSize
-            self.headphone_ir_blocks = headphoneFilterSize // block_size
-
         self.filter_source = filter_source
         self.filter_list_path = filter_list_name
         self.filter_database = filter_database
 
-        # self.matvarname = "binsim"
-        self.matvarname = None
-        self.matfile = None
         self.headphone_filter = None
         self.filter_list = None
 
-        # format: [key,{filter}]
+        # format: [key, {filter}]
         self.ds_filter_dict = {}
         self.early_filter_dict = {}
         self.late_filter_dict = {}
@@ -207,167 +203,118 @@ class FilterStorage(object):
         if self.filter_source == "wav":
             self.filter_list = open(self.filter_list_path, "r")
             self.log.info("Loading wav format filters according to filter list")
-            # Start to load filters
             self.load_wav_filters()
         elif self.filter_source == "mat":
             self.log.info("Loading mat format filters")
-            self.matfile = sio.loadmat(filter_database)
+            self.mat_file = sio.loadmat(filter_database)
             self.mat_vars = sio.whosmat(filter_database)
             self.parse_and_load_matfile()
 
     def parse_and_load_matfile(self):
         for var in self.mat_vars:
-            self.matvarname = var[0]
-            self.log.info(f"Loading mat variable : {self.matvarname}")
+            var_name = var[0]
+            self.log.info(f"Loading mat variable: {var_name}")
 
-            rows = self.matfile[self.matvarname].shape[1]
+            mat_data = self.mat_file[var_name]
+            for row in range(mat_data.shape[1]):
+                filter_value_list = np.concatenate(
+                    [
+                        mat_data["listenerOrientation"][0, row],
+                        mat_data["listenerPosition"][0, row],
+                        mat_data["sourceOrientation"][0, row],
+                        mat_data["sourcePosition"][0, row],
+                        mat_data["custom"][0, row],
+                    ],
+                    axis=1,
+                )
+                filter_pose = Pose.from_filterValueList(filter_value_list)
+                key = filter_pose.create_key()
 
-            for row in range(rows):
-                # print("Parse mat row")
-                # print(row)
-                # Parse headphone filter
-                if self.matfile[self.matvarname]["type"][0][row] == "HP":
+                current_filter = mat_data["filter"][0, row]
+                row_type = str.upper(mat_data["type"][0, row][0])
+                if row_type == "HP":
                     if not self.useHeadphoneFilter:
+                        self.log.info("Skipping headphone filter")
                         continue
-
-                    filter_type = FilterType.headphone_Filter
-
-                    self.headphone_filter = Filter(
-                        self.check_filter(
-                            filter_type,
-                            self.matfile[self.matvarname]["filter"][0][row],
+                    current_filter = Filter(
+                        inputfilter=self.check_filter(
+                            filter_type=FilterType.headphone_Filter,
+                            current_filter=current_filter,
                         ),
-                        self.headphone_ir_blocks,
-                        self.block_size,
-                        self.torch_settings,
+                        irBlocks=self.headphone_blocks,
+                        block_size=self.block_size,
+                        torch_settings=self.torch_settings,
                     )
-                    self.headphone_filter.storeInFDomain()
-                    continue
+                    current_filter.storeInFDomain()
+                    self.headphone_filter = current_filter
 
-                # Parse Source directivity filters
-                if self.matfile[self.matvarname]["type"][0][row] == "SD":
-                    filter_type = FilterType.directivity_Filter
-                    filter_value_list = np.concatenate(
-                        [
-                            self.matfile[self.matvarname]["sourceOrientation"][
-                                0
-                            ][row],
-                            self.matfile[self.matvarname]["sourcePosition"][0][
-                                row
-                            ],
-                            self.matfile[self.matvarname]["custom"][0][row],
-                        ],
-                        axis=1,
-                    )
-
+                elif row_type == "SD":
+                    # skip 'listenerOrientation' and 'listenerPosition'
+                    filter_value_list = filter_value_list[:, 6:]
                     filter_pose = SourcePose.from_filterValueList(
                         filter_value_list
                     )
+                    key = filter_pose.create_key()
 
                     current_filter = Filter(
-                        self.check_filter(
-                            filter_type,
-                            self.matfile[self.matvarname]["filter"][0][row],
+                        inputfilter=self.check_filter(
+                            filter_type=FilterType.sd_Filter,
+                            current_filter=current_filter,
                         ),
-                        self.sd_blocks,
-                        self.block_size,
-                        self.torch_settings,
+                        irBlocks=self.sd_blocks,
+                        block_size=self.block_size,
+                        torch_settings=self.torch_settings,
                     )
-
                     current_filter.storeInFDomain()
+                    self.sd_filter_dict[key] = current_filter
 
-                    # create key and store in dict
-                    key = filter_pose.create_key()
-                    self.sd_filter_dict.update({key: current_filter})
-
-                    continue
-
-                # Parse all other filters
-                filter_value_list = np.concatenate(
-                    (
-                        self.matfile[self.matvarname]["listenerOrientation"][0][
-                            row
-                        ],
-                        self.matfile[self.matvarname]["listenerPosition"][0][
-                            row
-                        ],
-                        self.matfile[self.matvarname]["sourceOrientation"][0][
-                            row
-                        ],
-                        self.matfile[self.matvarname]["sourcePosition"][0][row],
-                        self.matfile[self.matvarname]["custom"][0][row],
-                    ),
-                    axis=1,
-                )
-
-                filter_pose = Pose.from_filterValueList(filter_value_list)
-
-                if self.matfile[self.matvarname]["type"][0][row] == "DS":
-                    filter_type = FilterType.ds_Filter
-
+                elif row_type == "DS":
                     current_filter = Filter(
-                        self.check_filter(
-                            filter_type,
-                            self.matfile[self.matvarname]["filter"][0][row],
+                        inputfilter=self.check_filter(
+                            filter_type=FilterType.ds_Filter,
+                            current_filter=current_filter,
                         ),
-                        self.ds_blocks,
-                        self.block_size,
-                        self.torch_settings,
+                        irBlocks=self.ds_blocks,
+                        block_size=self.block_size,
+                        torch_settings=self.torch_settings,
                     )
-
                     current_filter.storeInFDomain()
+                    self.ds_filter_dict[key] = current_filter
 
-                    # create key and store in dict
-                    key = filter_pose.create_key()
-                    self.ds_filter_dict.update({key: current_filter})
-
-                elif self.matfile[self.matvarname]["type"][0][row] == "ER":
-                    filter_type = FilterType.early_Filter
-
+                elif row_type == "ER":
                     current_filter = Filter(
-                        self.check_filter(
-                            filter_type,
-                            self.matfile[self.matvarname]["filter"][0][row],
+                        inputfilter=self.check_filter(
+                            filter_type=FilterType.early_Filter,
+                            current_filter=current_filter,
                         ),
-                        self.early_blocks,
-                        self.block_size,
-                        self.torch_settings,
+                        irBlocks=self.early_blocks,
+                        block_size=self.block_size,
+                        torch_settings=self.torch_settings,
                     )
-
                     current_filter.storeInFDomain()
+                    self.early_filter_dict[key] = current_filter
 
-                    # create key and store in dict
-                    key = filter_pose.create_key()
-                    self.early_filter_dict.update({key: current_filter})
-
-                elif self.matfile[self.matvarname]["type"][0][row] == "LR":
-                    filter_type = FilterType.late_Filter
-
+                elif row_type == "LR":
                     current_filter = Filter(
-                        self.check_filter(
-                            filter_type,
-                            self.matfile[self.matvarname]["filter"][0][row],
+                        inputfilter=self.check_filter(
+                            filter_type=FilterType.late_Filter,
+                            current_filter=current_filter,
                         ),
-                        self.late_blocks,
-                        self.block_size,
-                        self.torch_settings,
+                        irBlocks=self.late_blocks,
+                        block_size=self.block_size,
+                        torch_settings=self.torch_settings,
                     )
-
                     current_filter.storeInFDomain()
-
-                    # create key and store in dict
-                    key = filter_pose.create_key()
-                    self.late_filter_dict.update({key: current_filter})
+                    self.late_filter_dict[key] = current_filter
 
                 else:
-                    # filter_type = FilterType.Undefined
                     raise RuntimeError("Filter identifier wrong or missing")
 
             # Delete parsed variable
-            self.matfile.pop(self.matvarname)
+            self.mat_file.pop(var_name)
 
-        # clear whole matfile after parsing
-        self.matfile = []
+        # clear whole mat_file after parsing
+        self.mat_file = []
 
     def parse_filter_list(self):
         """
@@ -382,7 +329,6 @@ class FilterStorage(object):
 
         :return: Iterator of (Pose, filter-path) tuples
         """
-
         for line in self.filter_list:
             # comment out lines in the list with a "#"
             if line.startswith("#") or line == "\n":
@@ -400,7 +346,7 @@ class FilterStorage(object):
                         self.load_wav_filter(
                             filter_path, FilterType.headphone_Filter
                         ),
-                        self.headphone_ir_blocks,
+                        self.headphone_blocks,
                         self.block_size,
                         self.torch_settings,
                     )
@@ -416,39 +362,34 @@ class FilterStorage(object):
                     continue
 
             if line.startswith("SD"):
-                # TODO: This code is clearly wrong and needs to be fixed
-                # TODO: Should SD filters also be skipped if not used
-                #  (analogue to HP filters)?
-                filter_type = FilterType.directivity_Filter
-                filter_value_list = np.concatenate(
-                    [
-                        self.matfile[self.matvarname]["sourceOrientation"][0][
-                            row
-                        ],
-                        self.matfile[self.matvarname]["sourcePosition"][0][row],
-                        self.matfile[self.matvarname]["custom"][0][row],
-                    ],
-                    axis=1,
-                )
-
-                filter_pose = SourcePose.from_filterValueList(filter_value_list)
-
-                current_filter = Filter(
-                    self.check_filter(
-                        filter_type,
-                        self.matfile[self.matvarname]["filter"][0][row],
-                    ),
-                    self.sd_blocks,
-                    self.block_size,
-                    self.torch_settings,
-                )
-
-                current_filter.storeInFDomain()
-
-                # create key and store in dict
-                key = filter_pose.create_key()
-                self.sd_filter_dict.update({key: current_filter})
-                continue
+                # # TODO: Should SD filters also be skipped if not used
+                # #  (analogue to HP filters)?
+                # filter_type = FilterType.sd_Filter
+                # filter_value_list = np.concatenate(
+                #     [
+                #         self.matfile[self.matvarname]["sourceOrientation"][0][
+                #             row
+                #         ],
+                #         self.matfile[self.matvarname]["sourcePosition"][0][row],
+                #         self.matfile[self.matvarname]["custom"][0][row],
+                #     ],
+                #     axis=1,
+                # )
+                # filter_pose = SourcePose.from_filterValueList(filter_value_list)
+                # key = filter_pose.create_key()
+                # current_filter = Filter(
+                #     self.check_filter(
+                #         filter_type,
+                #         self.matfile[self.matvarname]["filter"][0][row],
+                #     ),
+                #     self.sd_blocks,
+                #     self.block_size,
+                #     self.torch_settings,
+                # )
+                # current_filter.storeInFDomain()
+                # self.sd_filter_dict.update({key: current_filter})
+                # continue
+                raise NotImplementedError("This code needs to be fixed")
 
             if line.startswith("DS"):
                 filter_type = FilterType.ds_Filter
@@ -463,10 +404,8 @@ class FilterStorage(object):
                 filter_value_list = tuple(line_content[1:-1])
                 filter_pose = Pose.from_filterValueList(filter_value_list)
             else:
-                # filter_type = FilterType.Undefined
                 raise RuntimeError("Filter identifier wrong or missing")
 
-            # yield pose, filter_path
             yield filter_pose, filter_path, filter_type
 
     def load_wav_filters(self):
@@ -475,7 +414,6 @@ class FilterStorage(object):
 
         :return: None
         """
-
         self.log.info("Start loading filters...")
         start = time.time()
 
@@ -493,24 +431,20 @@ class FilterStorage(object):
         #
         # for pose, filter_path in parsed_filter_list:
         #     self.log.debug(f"Loading {filter_path}")
-        #
+        #     key = pose.create_key()
         #     loaded_filter = self.load_filter(filter_path)
         #     current_filter = Filter(
-        #         loaded_filter,
-        #         self.ir_blocks,
-        #         self.block_size,
+        #         inputfilter=loaded_filter,
+        #         irBlocks=self.ir_blocks,
+        #         block_size=self.block_size,
         #         filename=filter_path,
         #     )
-        #
-        #     # create key and store in dict.
-        #     key = pose.create_key()
         #     self.filter_dict.update({key: current_filter})
 
         for filter_pose, filter_path, filter_type in parsed_filter_list:
             # Skip undefined types (e.g. old format)
             if filter_type == FilterType.Undefined:
                 continue
-
             fn_filter = Path(filter_path)
 
             # check for missing filters and throw exception if not found
@@ -519,55 +453,41 @@ class FilterStorage(object):
                 raise FileNotFoundError(f"File {fn_filter} is missing.")
 
             self.log.debug(f"Loading {filter_path}")
+            key = filter_pose.create_key()
             if filter_type == FilterType.ds_Filter:
-                # preprocess filters and put them in a dict
                 current_filter = Filter(
-                    self.load_wav_filter(filter_path, filter_type),
-                    self.ds_blocks,
-                    self.block_size,
-                    self.torch_settings,
+                    inputfilter=self.load_wav_filter(filter_path, filter_type),
+                    irBlocks=self.ds_blocks,
+                    block_size=self.block_size,
+                    torch_settings=self.torch_settings,
                 )
-
                 current_filter.storeInFDomain()
-
-                # create key and store in dict
-                key = filter_pose.create_key()
-                self.ds_filter_dict.update({key: current_filter})
+                self.ds_filter_dict[key] = current_filter
 
             if filter_type == FilterType.early_Filter:
-                # preprocess late reverb filters and put them in a separate dict
                 current_filter = Filter(
-                    self.load_wav_filter(filter_path, filter_type),
-                    self.early_blocks,
-                    self.block_size,
-                    self.torch_settings,
+                    inputfilter=self.load_wav_filter(filter_path, filter_type),
+                    irBlocks=self.early_blocks,
+                    block_size=self.block_size,
+                    torch_settings=self.torch_settings,
                 )
-
                 current_filter.storeInFDomain()
-
-                # create key and store in dict
-                key = filter_pose.create_key()
-                self.early_filter_dict.update({key: current_filter})
+                self.early_filter_dict[key] = current_filter
 
             if filter_type == FilterType.late_Filter:
-                # preprocess late reverb filters and put them in a separate dict
                 current_filter = Filter(
-                    self.load_wav_filter(filter_path, filter_type),
-                    self.late_blocks,
-                    self.block_size,
-                    self.torch_settings,
+                    inputfilter=self.load_wav_filter(filter_path, filter_type),
+                    irBlocks=self.late_blocks,
+                    block_size=self.block_size,
+                    torch_settings=self.torch_settings,
                 )
-
                 current_filter.storeInFDomain()
-
-                # create key and store in dict
-                key = filter_pose.create_key()
-                self.late_filter_dict.update({key: current_filter})
+                self.late_filter_dict[key] = current_filter
 
         end = time.time()
-        self.log.info(f"Finished loading filters in{end - start}sec.")
+        self.log.info(f"Finished loading filters in {str(end - start)} sec.")
         # self.log.info(
-        #     f"filter_dict size: {total_size(self.filter_dict) // 1024 // 1024}MiB"
+        #     f"filter_dict size: {total_size(self.filter_dict) // 1024 // 1024} MiB"
         # )
 
     def get_sd_filter(self, source_pose):
