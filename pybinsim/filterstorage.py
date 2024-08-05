@@ -22,7 +22,7 @@
 
 import logging
 import time
-from enum import auto, Enum
+from enum import Enum
 from pathlib import Path
 
 import numpy as np
@@ -109,12 +109,12 @@ class Filter(object):
 
 
 class FilterType(Enum):
-    Undefined = auto()
-    ds_Filter = auto()
-    early_Filter = auto()
-    late_Filter = auto()
-    headphone_Filter = auto()
-    directivity_Filter = auto()
+    Undefined = "Unidentified filter"
+    ds_Filter = "Direct sound filter"
+    early_Filter = "Early filter"
+    late_Filter = "Late filter"
+    sd_Filter = "Source directivity filter"
+    headphone_Filter = "Headphone filter"
 
 
 class FilterStorage(object):

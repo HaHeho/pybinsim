@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 
+from pybinsim.filterstorage import FilterType
 from pybinsim.parsing import parse_soundfile_list
 from pybinsim.soundhandler import LoopState, PlayState, SoundHandler
 
@@ -92,31 +93,18 @@ class PkgReceiver(object):
         :param args:
         :return:
         """
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(f"Args: {args}")
-
-        current_channel = channel
+        self.log.debug(f"{identifier=}, {channel=}, {args=}")
         key_slice = self.select_slice(identifier)
-
-        if len(args) == len(
-            self.valueList_ds_filter[current_channel, key_slice]
-        ):
-            if np.all(
-                args == self.valueList_ds_filter[current_channel, key_slice]
-            ):
-                self.log.debug("Same direct sound filter as before")
+        if len(args) == len(self.valueList_ds_filter[channel, key_slice]):
+            if np.all(args == self.valueList_ds_filter[channel, key_slice]):
+                self.log.debug(f"Same {FilterType.ds_Filter.value} as before")
             else:
-                self.ds_filters_updated[current_channel] = True
-                self.valueList_ds_filter[current_channel, key_slice] = args
+                self.ds_filters_updated[channel] = True
+                self.valueList_ds_filter[channel, key_slice] = args
         else:
-            self.log.warning("OSC identifier and key mismatch")
-            self.log.warning(f"key_slice: {key_slice}; args: {len(args)}")
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(
-        #     f"Current Filter List: {self.valueList_filter[current_channel, :]}"
-        # )
+            self.log.warning(
+                f"OSC identifier/key mismatch for {key_slice=}, {len(args)=}"
+            )
 
     def handle_early_filter_input(self, identifier, channel, *args):
         """
@@ -127,27 +115,21 @@ class PkgReceiver(object):
         :param args:
         :return:
         """
-
-        current_channel = channel
+        self.log.debug(f"{identifier=}, {channel=}, {args=}")
         key_slice = self.select_slice(identifier)
 
-        if len(args) == len(
-            self.valueList_early_filter[current_channel, key_slice]
-        ):
-            if np.all(
-                args == self.valueList_early_filter[current_channel, key_slice]
-            ):
-                self.log.debug("Same early filter as before")
+        if len(args) == len(self.valueList_early_filter[channel, key_slice]):
+            if np.all(args == self.valueList_early_filter[channel, key_slice]):
+                self.log.debug(
+                    f"Same {FilterType.early_Filter.value} as before"
+                )
             else:
-                self.early_filters_updated[current_channel] = True
-                self.valueList_early_filter[current_channel, key_slice] = args
+                self.early_filters_updated[channel] = True
+                self.valueList_early_filter[channel, key_slice] = args
         else:
-            self.log.warning("OSC identifier and key mismatch")
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(
-        #     f"Current Late Reverb Filter List: {self.valueList_late_reverb[current_channel, :]}"
-        # )
+            self.log.warning(
+                f"OSC identifier/key mismatch for {key_slice=}, {len(args)=}"
+            )
 
     def handle_late_filter_input(self, identifier, channel, *args):
         """
@@ -158,26 +140,19 @@ class PkgReceiver(object):
         :param args:
         :return:
         """
-        current_channel = channel
+        self.log.debug(f"{identifier=}, {channel=}, {args=}")
         key_slice = self.select_slice(identifier)
 
-        if len(args) == len(
-            self.valueList_late_filter[current_channel, key_slice]
-        ):
-            if np.all(
-                args == self.valueList_late_filter[current_channel, key_slice]
-            ):
-                self.log.debug("Same late filter as before")
+        if len(args) == len(self.valueList_late_filter[channel, key_slice]):
+            if np.all(args == self.valueList_late_filter[channel, key_slice]):
+                self.log.debug(f"Same {FilterType.late_Filter.value} as before")
             else:
-                self.late_filters_updated[current_channel] = True
-                self.valueList_late_filter[current_channel, key_slice] = args
+                self.late_filters_updated[channel] = True
+                self.valueList_late_filter[channel, key_slice] = args
         else:
-            self.log.warning("OSC identifier and key mismatch")
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(
-        #     f"Current Late Reverb Filter List: {self.valueList_late_reverb[current_channel, :]}"
-        # )
+            self.log.warning(
+                f"OSC identifier/key mismatch for {key_slice=}, {len(args)=}"
+            )
 
     def handle_sd_filter_input(self, identifier, channel, *args):
         """
@@ -188,30 +163,18 @@ class PkgReceiver(object):
         :param args:
         :return:
         """
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(f"Args: {args}")
-
-        current_channel = channel
+        self.log.debug(f"{identifier=}, {channel=}, {args=}")
         key_slice = self.select_slice(identifier)
-
-        if len(args) == len(
-            self.valueList_sd_filter[current_channel, key_slice]
-        ):
-            if np.all(
-                args == self.valueList_sd_filter[current_channel, key_slice]
-            ):
-                self.log.debug("Same direct sound filter as before")
+        if len(args) == len(self.valueList_sd_filter[channel, key_slice]):
+            if np.all(args == self.valueList_sd_filter[channel, key_slice]):
+                self.log.debug(f"Same {FilterType.sd_Filter.value} as before")
             else:
-                self.sd_filters_updated[current_channel] = True
-                self.valueList_sd_filter[current_channel, key_slice] = args
+                self.sd_filters_updated[channel] = True
+                self.valueList_sd_filter[channel, key_slice] = args
         else:
-            self.log.warning("OSC identifier and key mismatch")
-
-        # self.log.info(f"Channel: {channel}")
-        # self.log.info(
-        #     f"Current Filter List: {self.valueList_filter[current_channel, :]}"
-        # )
+            self.log.warning(
+                f"OSC identifier/key mismatch for {key_slice=}, {len(args)=}"
+            )
 
     def handle_file_input(self, identifier, soundpath):
         """Handler for playlist control"""
