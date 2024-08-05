@@ -82,13 +82,18 @@ Create a config file with the name ``pyBinSimSettings.txt`` and content like thi
 
 Start Binaural Simulation::
 
-    import pybinsim
     import logging
 
-    pybinsim.logger.setLevel(logging.DEBUG)    # defaults to INFO
-    #Use logging.WARNING for printing warnings only
+    import pybinsim
 
-    with pybinsim.BinSim('pyBinSimSettings.txt') as binsim:
+    pybinsim.logger.setLevel(logging.DEBUG)  # defaults to INFO
+    # Use logging.WARNING for printing warnings only
+
+    # # utilize command line arguments instead of a hard coded file
+    # with pybinsim.BinSim(config_file=pybinsim.args.config_file) as binsim:
+    #     binsim.stream_start()
+
+    with pybinsim.BinSim("pyBinSimSettings.txt") as binsim:
         binsim.stream_start()
 
 Examples
