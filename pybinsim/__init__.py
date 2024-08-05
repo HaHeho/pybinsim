@@ -59,7 +59,7 @@ def parse_cmd_args():
 def init_logging():
     console_handler = logging.StreamHandler()
     formatter = logging.Formatter(
-        "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - "
+        "%(asctime)s - %(filename)16s:%(lineno)-3d - %(levelname)7s - "
         "%(name)s - %(message)s"
     )
     console_handler.setFormatter(formatter)
