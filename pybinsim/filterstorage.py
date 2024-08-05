@@ -586,89 +586,35 @@ class FilterStorage(object):
 
     def check_filter(self, filter_type, current_filter):
         # TODO: Check sampling rate (fs)
+        filter_size = np.size(current_filter, axis=0)
+        match filter_type:
+            case FilterType.ds_Filter:
+                target_size = self.ds_size
+            case FilterType.early_Filter:
+                target_size = self.early_size
+            case FilterType.late_Filter:
+                target_size = self.late_size
+            case FilterType.sd_Filter:
+                target_size = self.sd_size
+            case FilterType.headphone_Filter:
+                target_size = self.headPhoneFilterSize
+            case _:
+                raise ValueError(f"Unknown filter type {filter_type}")
 
-        filter_size = np.shape(current_filter)
-
-        if filter_type == FilterType.ds_Filter:
-            if filter_size[0] > self.ds_size:
-                self.log.warning("Direct Sound Filter too long: shorten")
-                current_filter = current_filter[: self.ds_size]
-            elif filter_size[0] < self.ds_size:
-                # self.log.info("Direct Sound Filter too short: zero padding")
-                current_filter = np.concatenate(
-                    (
-                        current_filter,
-                        np.zeros(
-                            (self.ds_size - filter_size[0], 2), np.float32
-                        ),
-                    ),
-                    0,
-                )
-        elif filter_type == FilterType.early_Filter:
-            if filter_size[0] > self.early_size:
-                self.log.warning("Early Filter too long: shorten")
-                current_filter = current_filter[: self.early_size]
-            elif filter_size[0] < self.early_size:
-                self.log.info("Early Filter too short: zero padding")
-                current_filter = np.concatenate(
-                    (
-                        current_filter,
-                        np.zeros(
-                            (self.early_size - filter_size[0], 2), np.float32
-                        ),
-                    ),
-                    0,
-                )
-        elif filter_type == FilterType.late_Filter:
-            if filter_size[0] > self.late_size:
-                self.log.warning("Late Filter too long: shorten")
-                current_filter = current_filter[: self.late_size]
-            elif filter_size[0] < self.late_size:
-                self.log.info("Late Filter too short: zero padding")
-                current_filter = np.concatenate(
-                    (
-                        current_filter,
-                        np.zeros(
-                            (self.late_size - filter_size[0], 2), np.float32
-                        ),
-                    ),
-                    0,
-                )
-        elif filter_type == FilterType.directivity_Filter:
-            if filter_size[0] > self.sd_size:
-                self.log.warning("Source Directivity Filter too long: shorten")
-                current_filter = current_filter[: self.sd_size]
-            elif filter_size[0] < self.sd_size:
-                # self.log.info(
-                #     "Source Directivity Filter too short: zero padding"
-                # )
-                current_filter = np.concatenate(
-                    (
-                        current_filter,
-                        np.zeros(
-                            (self.sd_size - filter_size[0], 2), np.float32
-                        ),
-                    ),
-                    0,
-                )
-        elif (
-            filter_type == FilterType.headphone_Filter
-        ) and self.useHeadphoneFilter:
-            if filter_size[0] > self.headPhoneFilterSize:
-                self.log.warning("Headphone Filter too long: shorten")
-                current_filter = current_filter[: self.headPhoneFilterSize]
-            elif filter_size[0] < self.headPhoneFilterSize:
-                self.log.info("Headphone Filter too short: zero padding")
-                current_filter = np.concatenate(
-                    (
-                        current_filter,
-                        np.zeros(
-                            (self.headPhoneFilterSize - filter_size[0], 2),
-                            np.float32,
-                        ),
-                    ),
-                    0,
-                )
+        if filter_size < target_size:
+            self.log.debug(
+                f"{filter_type.value} too short: Zero-padding from "
+                f"{filter_size} samples to {target_size} samples"
+            )
+            current_filter = np.pad(
+                current_filter, ((0, target_size - filter_size), (0, 0))
+            )
+        elif filter_size > target_size:
+            self.log.debug(
+                f"{filter_type.value} too long: Truncating from "
+                f"{filter_size} samples to {target_size} samples"
+            )
+            current_filter = current_filter[target_size]
 
         return current_filter
 

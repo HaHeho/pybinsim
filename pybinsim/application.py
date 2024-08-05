@@ -30,7 +30,7 @@ import sounddevice as sd
 import torch
 
 from pybinsim.convolver import ConvolverTorch
-from pybinsim.filterstorage import FilterStorage
+from pybinsim.filterstorage import FilterStorage, FilterType
 from pybinsim.input_buffer import InputBufferMulti
 from pybinsim.osc_receiver import OscReceiver
 from pybinsim.parsing import parse_boolean, parse_soundfile_list
@@ -160,19 +160,18 @@ class BinSim(object):
         self.block = None
         self.stream = None
 
-        (
-            self.convolverHP,
-            self.ds_convolver,
-            self.early_convolver,
-            self.late_convolver,
-            self.sd_convolver,
-            self.input_Buffer,
-            self.input_BufferHP,
-            self.input_BufferSD,
-            self.filterStorage,
-            self.pkgReceiver,
-            self.soundHandler,
-        ) = self.initialize_pybinsim()
+        self.convolverHP = None
+        self.ds_convolver = None
+        self.early_convolver = None
+        self.late_convolver = None
+        self.sd_convolver = None
+        self.input_Buffer = None
+        self.input_BufferHP = None
+        self.input_BufferSD = None
+        self.filterStorage = None
+        self.pkgReceiver = None
+        self.soundHandler = None
+        self.initialize_pybinsim()
 
     def __enter__(self):
         return self
@@ -202,10 +201,7 @@ class BinSim(object):
             print(e)
 
     def initialize_pybinsim(self):
-        # self.result = np.empty([self.blockSize, 2], dtype=np.float32)
         self.result = torch.zeros(2, self.blockSize, dtype=torch.float32)
-
-        # self.block = np.zeros([self.nChannels, self.blockSize], dtype=np.float32)
         self.block = torch.zeros(
             [self.nChannels, self.blockSize], dtype=torch.float32
         )
@@ -214,31 +210,40 @@ class BinSim(object):
         early_size = self.config.get("early_filterSize")
         late_size = self.config.get("late_filterSize")
         sd_size = self.config.get("directivity_filterSize")
+        hp_size = self.config.get("headphone_filterSize")
 
-        if ds_size < self.blockSize:
-            ds_size = self.blockSize
+        def _get_minimum_size(filter_size, filter_type):
+            if filter_size >= self.blockSize:
+                return filter_size
             self.log.info(
-                "Direct sound filter size smaller than block size: "
-                "Zero-padding DS filter"
+                f"{filter_type.value} shorter than block size: Zero-padding "
+                f"from {filter_size} samples to {self.blockSize} samples"
             )
-        if early_size < self.blockSize:
-            early_size = self.blockSize
+            return self.blockSize
+
+        ds_size = _get_minimum_size(ds_size, FilterType.ds_Filter)
+        early_size = _get_minimum_size(early_size, FilterType.early_Filter)
+        late_size = _get_minimum_size(late_size, FilterType.late_Filter)
+        sd_size = _get_minimum_size(sd_size, FilterType.sd_Filter)
+        hp_size = _get_minimum_size(hp_size, FilterType.headphone_Filter)
+
+        def _get_multiple_size(filter_size, filter_type):
+            if not np.mod(filter_size, self.blockSize):
+                return filter_size
+            new_size = (
+                int(np.ceil(filter_size / self.blockSize)) * self.blockSize
+            )
             self.log.info(
-                "Early filter size smaller than block size: "
-                "Zero-padding EARLY filter"
+                f"{filter_type.value} not multiple of block size: Zero-padding "
+                f"from {filter_size} samples to {new_size} samples"
             )
-        if late_size < self.blockSize:
-            late_size = self.blockSize
-            self.log.info(
-                "Late filter size smaller than block size: "
-                "Zero-padding LATE filter"
-            )
-        if sd_size < self.blockSize:
-            sd_size = self.blockSize
-            self.log.info(
-                "Directivity filter size smaller than block size: "
-                "Zero-padding SD filter"
-            )
+            return new_size
+
+        ds_size = _get_multiple_size(ds_size, FilterType.ds_Filter)
+        early_size = _get_multiple_size(early_size, FilterType.early_Filter)
+        late_size = _get_multiple_size(late_size, FilterType.late_Filter)
+        sd_size = _get_multiple_size(sd_size, FilterType.sd_Filter)
+        hp_size = _get_multiple_size(hp_size, FilterType.headphone_Filter)
 
         # Create FilterStorage
         filterStorage = FilterStorage(
@@ -256,108 +261,102 @@ class BinSim(object):
         )
 
         # Create SoundHandler
-        soundHandler = SoundHandler(
-            self.blockSize, self.nChannels, self.sampleRate
+        self.soundHandler = SoundHandler(
+            block_size=self.blockSize,
+            n_channels=self.nChannels,
+            fs=self.sampleRate,
         )
 
         soundfiles = parse_soundfile_list(self.config.get("soundfile"))
         loop_config = (
             LoopState.LOOP if self.config.get("loopSound") else LoopState.SINGLE
         )
-        soundHandler.create_player(
+        self.soundHandler.create_player(
             soundfiles, CONFIG_SOUNDFILE_PLAYER_NAME, loop_state=loop_config
         )
 
         # Start a PkgReceiver
         recv_type = self.config.get("recv_type")
         recv_select = {"zmq": ZmqReceiver, "osc": OscReceiver}
-        pkgReceiver = recv_select.get(recv_type, PkgReceiver)(
-            self.config, soundHandler
+        self.pkgReceiver = recv_select.get(recv_type, PkgReceiver)(
+            self.config, self.soundHandler
         )
-        pkgReceiver.start_listening()
+        self.pkgReceiver.start_listening()
         time.sleep(1)
 
         # Create input buffers
-        input_Buffer = InputBufferMulti(
-            self.blockSize,
-            self.nChannels,
-            self.config.get("torchConvolution[cpu/cuda]"),
+        torch_settings = self.config.get("torchConvolution[cpu/cuda]")
+        self.input_Buffer = InputBufferMulti(
+            block_size=self.blockSize,
+            inputs=self.nChannels,
+            torch_settings=torch_settings,
         )
-        input_BufferHP = InputBufferMulti(
-            self.blockSize, 2, self.config.get("torchConvolution[cpu/cuda]")
+        self.input_BufferHP = InputBufferMulti(
+            block_size=self.blockSize,
+            inputs=2,
+            torch_settings=torch_settings,
         )
-        input_BufferSD = InputBufferMulti(
-            self.blockSize, 2, self.config.get("torchConvolution[cpu/cuda]")
+        self.input_BufferSD = InputBufferMulti(
+            block_size=self.blockSize,
+            inputs=2,
+            torch_settings=torch_settings,
         )
 
         # Create N convolvers depending on the number of wav channels
-        self.log.info(f"Number of Channels: {self.nChannels}")
+        self.log.info("Number of Channels: " + str(self.nChannels))
 
-        ds_convolver = ConvolverTorch(
-            ds_size,
-            self.blockSize,
-            False,
-            self.nChannels,
-            self.config.get("enableCrossfading"),
-            self.config.get("torchConvolution[cpu/cuda]"),
+        enableCrossfading = self.config.get("enableCrossfading")
+        self.ds_convolver = ConvolverTorch(
+            ir_size=ds_size,
+            block_size=self.blockSize,
+            stereoInput=False,
+            sources=self.nChannels,
+            interpolate=enableCrossfading,
+            torch_settings=torch_settings,
         )
-        early_convolver = ConvolverTorch(
-            early_size,
-            self.blockSize,
-            False,
-            self.nChannels,
-            self.config.get("enableCrossfading"),
-            self.config.get("torchConvolution[cpu/cuda]"),
+        self.early_convolver = ConvolverTorch(
+            ir_size=early_size,
+            block_size=self.blockSize,
+            stereoInput=False,
+            sources=self.nChannels,
+            interpolate=enableCrossfading,
+            torch_settings=torch_settings,
         )
-        late_convolver = ConvolverTorch(
-            late_size,
-            self.blockSize,
-            False,
-            self.nChannels,
-            self.config.get("enableCrossfading"),
-            self.config.get("torchConvolution[cpu/cuda]"),
+        self.late_convolver = ConvolverTorch(
+            ir_size=late_size,
+            block_size=self.blockSize,
+            stereoInput=False,
+            sources=self.nChannels,
+            interpolate=enableCrossfading,
+            torch_settings=torch_settings,
         )
-        sd_convolver = ConvolverTorch(
-            sd_size,
-            self.blockSize,
-            True,
-            self.nChannels,
-            self.config.get("enableCrossfading"),
-            self.config.get("torchConvolution[cpu/cuda]"),
+        self.sd_convolver = ConvolverTorch(
+            ir_size=sd_size,
+            block_size=self.blockSize,
+            stereoInput=True,
+            sources=self.nChannels,
+            interpolate=enableCrossfading,
+            torch_settings=torch_settings,
         )
 
-        ds_convolver.active = self.config.get("ds_convolverActive")
-        early_convolver.active = self.config.get("early_convolverActive")
-        late_convolver.active = self.config.get("late_convolverActive")
-        sd_convolver.active = self.config.get("sd_convolverActive")
+        self.ds_convolver.active = self.config.get("ds_convolverActive")
+        self.early_convolver.active = self.config.get("early_convolverActive")
+        self.late_convolver.active = self.config.get("late_convolverActive")
+        self.sd_convolver.active = self.config.get("sd_convolverActive")
 
         # HP Equalization convolver
-        convolverHP = None
+        self.convolverHP = None
         if self.config.get("useHeadphoneFilter"):
-            convolverHP = ConvolverTorch(
-                self.config.get("headphone_filterSize"),
-                self.blockSize,
-                True,
-                1,
-                False,
-                self.config.get("torchConvolution[cpu/cuda]"),
+            self.convolverHP = ConvolverTorch(
+                ir_size=self.config.get("headphone_filterSize"),
+                block_size=self.blockSize,
+                stereoInput=True,
+                sources=1,
+                interpolate=False,
+                torch_settings=torch_settings,
             )
-            hpfilter = filterStorage.get_headphone_filter()
-            convolverHP.setAllFilters([hpfilter])
-
-        return (
-            convolverHP,
-            ds_convolver,
-            early_convolver,
-            late_convolver,
-            sd_convolver,
-            input_Buffer,
-            input_BufferHP,
-            input_BufferSD,
-            filterStorage,
-            pkgReceiver,
-            soundHandler,
-        )
+            hpfilter = self.filterStorage.get_headphone_filter()
+            self.convolverHP.setAllFilters([hpfilter])
 
     def __cleanup(self):
         # Close everything when BinSim is finished
@@ -488,7 +487,6 @@ def audio_callback(binsim):
                 ds = binsim.sd_convolver.process(
                     sd_buffer
                 )  # let's keep the name "ds" for now
-
             early = binsim.early_convolver.process(input_buffers)
             late = binsim.late_convolver.process(input_buffers)
 
