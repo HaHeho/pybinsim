@@ -90,7 +90,13 @@ class SoundHandler(object):
             self._players[player_name] = entry
 
     def get_player(self, player_name):
-        return self._players[player_name].player
+        try:
+            return self._players[player_name].player
+        except KeyError:
+            self.log.error(
+                f"Player '{player_name}' not found, available "
+                f"players are: {list(self._players.keys())}"
+            )
 
     def stop_all_players(self):
         empty_players = dict()

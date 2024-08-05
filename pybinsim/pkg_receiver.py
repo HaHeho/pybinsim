@@ -215,18 +215,19 @@ class PkgReceiver(object):
 
     def handle_file_input(self, identifier, soundpath):
         """Handler for playlist control"""
-
         assert identifier == "/pyBinSimFile"
         assert isinstance(soundpath, str)
         self.soundhandler.stop_all_players()
         self.soundhandler.create_player(
             parse_soundfile_list(soundpath),
             CONFIG_SOUNDFILE_PLAYER_NAME,
-            loop_state=LoopState.LOOP
-            if self.currentConfig.get("loopSound")
-            else LoopState.SINGLE,
+            loop_state=(
+                LoopState.LOOP
+                if self.currentConfig.get("loopSound")
+                else LoopState.SINGLE
+            ),
         )
-        self.log.info(f"soundPath: {soundpath}")
+        self.log.info(f"Setting player sound path to '{soundpath}'")
 
     def handle_play(
         self,
@@ -239,32 +240,30 @@ class PkgReceiver(object):
         play="play",
     ):
         assert identifier == "/pyBinSimPlay"
-
-        if player_name is None:
-            player_name = soundfile_list
         assert isinstance(soundfile_list, str)
         assert isinstance(start_channel, int)
         assert isinstance(loop, str)
+        loop = loop.lower()
+        if player_name is None:
+            player_name = soundfile_list
         volume = float(volume)
         assert isinstance(play, str)
-
-        # parsing
-        filepaths = parse_soundfile_list(soundfile_list)
+        play = play.lower()
 
         if loop == "loop":
             loop_state = LoopState.LOOP
         elif loop == "single":
             loop_state = LoopState.SINGLE
         else:
-            raise ValueError("loop argument must be 'loop' or 'single'")
-
+            raise ValueError("Loop argument must be 'loop' or 'single'")
         if play == "play":
             play_state = PlayState.PLAYING
         elif play == "pause":
             play_state = PlayState.PAUSED
         else:
-            raise ValueError("play argument must be 'play' or 'pause'")
+            raise ValueError("Play argument must be 'play' or 'pause'")
 
+        filepaths = parse_soundfile_list(soundfile_list)
         self.soundhandler.create_player(
             filepaths,
             player_name,
@@ -274,12 +273,8 @@ class PkgReceiver(object):
             volume,
         )
         self.log.info(
-            "starting player '%s' at channel %d, %s, %s, volume %f",
-            player_name,
-            start_channel,
-            loop_state,
-            play_state,
-            volume,
+            f"Starting player '{player_name}' at channel {start_channel}, "
+            f"{loop_state}, {play_state}, volume {volume:.3f}"
         )
 
     def handle_player_control(self, identifier, player_name, play):
@@ -292,26 +287,32 @@ class PkgReceiver(object):
         elif play == "stop":
             play_state = PlayState.STOPPED
         else:
-            raise ValueError("play argument must be 'play', 'pause' or 'stop'")
+            raise ValueError("Play argument must be 'play', 'pause' or 'stop'")
 
-        self.soundhandler.get_player(player_name).play_state = play_state
-        self.log.info("setting player '%s' to %s", player_name, play_state)
+        try:
+            self.soundhandler.get_player(player_name).play_state = play_state
+            self.log.info(f"Setting player '{player_name}' to {play_state}")
+        except AttributeError:
+            self.log.warning(
+                f"Ignored setting player '{player_name}' to {play_state}"
+            )
 
     def handle_player_channel(self, identifier, player_name, channel):
         assert identifier == "/pyBinSimPlayerChannel"
-
         assert isinstance(channel, int)
 
         self.soundhandler.set_player_start_channel(player_name, channel)
-        self.log.info("setting player '%s' to channel %d", player_name, channel)
+        self.log.info(f"Setting player '{player_name}' to channel {channel}")
 
     def handle_player_volume(self, identifier, player_name, volume):
         assert identifier == "/pyBinSimPlayerVolume"
 
         volume = float(volume)
-
         self.soundhandler.set_player_volume(player_name, volume)
-        self.log.info("setting player '%s' to volume %f", player_name, volume)
+        self.log.info(
+            f"Setting player '{player_name}' to volume {volume:.3f} "
+            f"({20.0 * np.log10(volume):+.1f} dB)"
+        )
 
     def handle_stop_all_players(self, identifier):
         assert identifier == "/pyBinSimStopAllPlayers"
@@ -324,21 +325,24 @@ class PkgReceiver(object):
         assert identifier == "/pyBinSimPauseAudioPlayback"
 
         self.currentConfig.set("pauseAudioPlayback", value)
-        self.log.info("Pausing audio")
+        self.log.info(f"{'Pausing' if value else 'Unpausing'} audio")
 
     def handle_convolution_pause(self, identifier, value):
         """Handler for playback control"""
         assert identifier == "/pyBinSimPauseConvolution"
 
         self.currentConfig.set("pauseConvolution", value)
-        self.log.info("Pausing convolution")
+        self.log.info(f"{'Pausing' if value else 'Unpausing'} convolution")
 
     def handle_loudness(self, identifier, value):
         """Handler for loudness control"""
         assert identifier == "/pyBinSimLoudness"
 
         self.currentConfig.set("loudnessFactor", float(value))
-        self.log.info("Changing loudness")
+        self.log.info(
+            f"Changing loudness to {value:.3f} "
+            f"({20.0 * np.log10(value):+.1f} dB)"
+        )
 
     def is_ds_filter_update_necessary(self, channel):
         """Check if there is a new direct filter for channel"""
