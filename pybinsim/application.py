@@ -79,42 +79,57 @@ class BinSimConfig(object):
         }
 
     def read_from_file(self, filepath):
-        config = open(filepath, "r")
+        with open(filepath, mode="r") as config:
+            for line in config:
+                line = str.strip(line)  # remove surrounding whitespaces
+                try:
+                    # split on whitespace
+                    [key, value] = str.split(line, maxsplit=1)
+                except ValueError:
+                    if len(line):
+                        self.log.debug(f"Line '{line}' skipped")
+                    continue  # skip empty lines
 
-        for line in config:
-            line_content = str.split(line)
-            key = line_content[0]
-            value = line_content[1]
+                if key in self.configurationDict:
+                    config_value_type = type(self.configurationDict[key])
 
-            if key in self.configurationDict:
-                config_value_type = type(self.configurationDict[key])
+                    if config_value_type is bool:
+                        # evaluate 'False' to False
+                        boolean_config = parse_boolean(value)
+                        if boolean_config is None:
+                            self.log.warning(
+                                f"Cannot convert '{value}' to bool. (key: '{key}')"
+                            )
+                        else:
+                            self.configurationDict[key] = boolean_config
+                    else:
+                        # use type(str) - ctors of int, float, ...
+                        self.configurationDict[key] = config_value_type(value)
 
-                if config_value_type is bool:
-                    # evaluate 'False' to False
-                    boolean_config = parse_boolean(value)
-
-                    if boolean_config is None:
-                        self.log.warning(
-                            f"Cannot convert {value} to bool. (key: {key})"
-                        )
-
-                    self.configurationDict[key] = boolean_config
+                elif key.startswith("#"):
+                    self.log.debug(f"Entry '{key}' ignored")
                 else:
-                    # use type(str) - ctors of int, float, ...
-                    self.configurationDict[key] = config_value_type(value)
-
-            else:
-                self.log.warning(f"Entry {key} is unknown")
+                    self.log.warning(f"Entry '{key}' is unknown")
 
     def get(self, setting):
         return self.configurationDict[setting]
 
     def set(self, setting, value):
+        if isinstance(self.configurationDict[setting], bool) and not isinstance(
+            value, bool
+        ):
+            value_bool = parse_boolean(value)
+            if value_bool is None:
+                self.log.warning(f"Cannot convert '{value}' to bool")
+            else:
+                value = value_bool
+
         if isinstance(self.configurationDict[setting], type(value)):
             self.configurationDict[setting] = value
         else:
             self.log.warning(
-                f"New value for entry {setting} has wrong type: {type(value)}"
+                f"New value for entry '{setting}' has wrong type "
+                f"{type(value)} instead of {type(self.configurationDict[setting])}"
             )
 
 
