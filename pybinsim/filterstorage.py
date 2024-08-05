@@ -29,8 +29,10 @@ import numpy as np
 import scipy.io as sio
 import soundfile as sf
 import torch
+from scipy.spatial import cKDTree
 
 from pybinsim.pose import Pose, SourcePose
+from pybinsim.utility import get_nearest_neighbour_key, sph2cart
 
 
 class Filter(object):
@@ -133,6 +135,7 @@ class FilterStorage(object):
         early_filterSize=0,
         late_filterSize=0,
         sd_filterSize=0,
+        useNearestNeighbour=False,
     ):
         self.log = logging.getLogger(f"{__package__}.{self.__class__.__name__}")
         self.log.info("Init")
@@ -190,6 +193,7 @@ class FilterStorage(object):
         self.filter_source = filter_source
         self.filter_list_path = filter_list_name
         self.filter_database = filter_database
+        self.useNearestNeighbour = useNearestNeighbour
 
         self.headphone_filter = None
         self.filter_list = None
@@ -209,6 +213,46 @@ class FilterStorage(object):
             self.mat_file = sio.loadmat(filter_database)
             self.mat_vars = sio.whosmat(filter_database)
             self.parse_and_load_matfile()
+
+        def _add_grid_summary_to_dict(filter_dict):
+            if not filter_dict:  # is empty
+                return
+            # get all unique string identifiers from custom field in keys
+            for custom_id in list(
+                dict.fromkeys(key[4] for key in filter_dict.keys())
+            ):
+                # match target source via custom field
+                _filter_dict = dict(
+                    (key, value)
+                    for key, value in filter_dict.items()
+                    if key[4] == custom_id
+                )
+                # gather all orientations in Cartesian coordinates
+                orientations_sph = np.asarray(
+                    list(key[0] for key in _filter_dict.keys())
+                )
+                orientations_cart = np.asarray(
+                    sph2cart(
+                        azimuth=orientations_sph[:, 0],
+                        elevation=orientations_sph[:, 1],
+                        radius=1.0,
+                    )
+                ).T
+                # make and store KDTree
+                filter_dict[f"{custom_id}_orientations_kdtree"] = cKDTree(
+                    orientations_cart
+                )
+                # store also spherical orientations for faster access
+                filter_dict[f"{custom_id}_orientations_sph"] = orientations_sph
+
+        if self.useNearestNeighbour:
+            self.log.info(
+                "Adding filter entries for nearest-neighbour selection"
+            )
+            _add_grid_summary_to_dict(self.ds_filter_dict)
+            _add_grid_summary_to_dict(self.early_filter_dict)
+            _add_grid_summary_to_dict(self.late_filter_dict)
+            _add_grid_summary_to_dict(self.sd_filter_dict)
 
     def parse_and_load_matfile(self):
         for var in self.mat_vars:
@@ -490,89 +534,84 @@ class FilterStorage(object):
         #     f"filter_dict size: {total_size(self.filter_dict) // 1024 // 1024} MiB"
         # )
 
+    def _get_filter(self, pose, filter_type, filter_dict, default_filter):
+        f_str = filter_type.value
+        key = pose.create_key()
+        try:
+            if self.useNearestNeighbour:
+                key = get_nearest_neighbour_key(filter_dict, key)
+            result_filter = filter_dict[key]
+            if result_filter.filename:
+                self.log.debug(f"{f_str} use file={result_filter.filename}")
+            else:
+                self.log.debug(f"{f_str} use {key=}")
+        except KeyError:
+            self.log.warning(f"{f_str} not found for {key=}")
+            result_filter = default_filter
+        except ValueError as e:
+            self.log.warning(f"{f_str} not found for {e}")
+            result_filter = default_filter
+        return result_filter
+
     def get_sd_filter(self, source_pose):
         """
         Searches in the dict if key is available and return corresponding filter
         When no filter is found, defaultFilter is returned which results in silence
 
-        :param source_pose
+        :param source_pose:
         :return: corresponding filter for pose
         """
-
-        key = source_pose.create_key()
-
-        if key in self.sd_filter_dict:
-            # self.log.info(f"Filter found: key: {key}")
-            result_filter = self.sd_filter_dict.get(key)
-            if result_filter.filename is not None:
-                self.log.info(f"   use file:: {result_filter.filename}")
-            return result_filter
-        else:
-            self.log.warning(f"Filter not found: key: {key}")
-            return self.default_sd_filter
+        return self._get_filter(
+            pose=source_pose,
+            filter_type=FilterType.sd_Filter,
+            filter_dict=self.sd_filter_dict,
+            default_filter=self.default_sd_filter,
+        )
 
     def get_ds_filter(self, pose):
         """
         Searches in the dict if key is available and return corresponding filter
         When no filter is found, defaultFilter is returned which results in silence
 
-        :param pose
+        :param pose:
         :return: corresponding filter for pose
         """
-
-        key = pose.create_key()
-
-        try:
-            result_filter = self.ds_filter_dict[key]
-        except KeyError:
-            self.log.warning(f"Filter not found: key: {key}")
-            return self.default_ds_filter
-
-        if result_filter.filename is not None:
-            self.log.info(f"   use file:: {result_filter.filename}")
-        return result_filter
+        return self._get_filter(
+            pose=pose,
+            filter_type=FilterType.ds_Filter,
+            filter_dict=self.ds_filter_dict,
+            default_filter=self.default_ds_filter,
+        )
 
     def get_early_filter(self, pose):
         """
         Searches in the dict if key is available and return corresponding filter
         When no filter is found, defaultFilter is returned which results in silence
 
-        :param pose
+        :param pose:
         :return: corresponding filter for pose
         """
-
-        key = pose.create_key()
-
-        try:
-            result_filter = self.early_filter_dict[key]
-        except KeyError:
-            self.log.warning(f"Filter not found: key: {key}")
-            return self.default_early_filter
-
-        if result_filter.filename is not None:
-            self.log.info(f"   use file:: {result_filter.filename}")
-        return result_filter
+        return self._get_filter(
+            pose=pose,
+            filter_type=FilterType.early_Filter,
+            filter_dict=self.early_filter_dict,
+            default_filter=self.default_early_filter,
+        )
 
     def get_late_filter(self, pose):
         """
         Searches in the dict if key is available and return corresponding filter
         When no filter is found, defaultFilter is returned which results in silence
 
-        :param pose
+        :param pose:
         :return: corresponding filter for pose
         """
-
-        key = pose.create_key()
-
-        try:
-            result_filter = self.late_filter_dict[key]
-        except KeyError:
-            self.log.warning(f"Filter not found: key: {key}")
-            return self.default_late_filter
-
-        if result_filter.filename is not None:
-            self.log.info(f"   use file:: {result_filter.filename}")
-        return result_filter
+        return self._get_filter(
+            pose=pose,
+            filter_type=FilterType.late_Filter,
+            filter_dict=self.late_filter_dict,
+            default_filter=self.default_late_filter,
+        )
 
     def get_headphone_filter(self):
         if self.headphone_filter is None:

@@ -1,6 +1,3 @@
-# Taken from https://github.com/mgeier/python-audio/blob/master/audio-files/utility.py
-
-
 """Helper functions for working with audio files in NumPy."""
 import contextlib
 from collections import deque
@@ -9,7 +6,133 @@ from sys import getsizeof, stderr
 
 import numpy as np
 
+from pybinsim.pose import Orientation
 
+
+def get_nearest_neighbour_key(filter_dict, target):
+    # Nearest-neighbour selection in Euclidean space, based on
+    # https://github.com/pyfar/pyfar/blob/731353e539abce13f599306bfaa93898bc2f179d/pyfar/classes/coordinates.py#L1521
+    #
+    # Performance matters here, therefore different parts of the code are
+    # benchmarked and the fastest implementation was selected.
+
+    if not filter_dict:  # is empty
+        return target
+
+    # get string identifier from custom field of target
+    custom_id = target[4]
+
+    # get all available orientations from filter dictionary
+    # (they were initialized after loading the filters)
+    try:
+        orientations_kdtree = filter_dict[f"{custom_id}_orientations_kdtree"]
+        orientations_sph = filter_dict[f"{custom_id}_orientations_sph"]
+    except KeyError:
+        raise ValueError(f"custom={custom_id}")
+
+    # from timeit import timeit
+    # def _is_custom_key(item):
+    #     return item[0][4] == custom_id
+    # globals()["filter_dict"] = filter_dict
+    # globals()["custom_id"] = custom_id
+    # globals()["_is_custom_key"] = _is_custom_key
+    # t1 = timeit(
+    #     "dict((key, value) for key, value in filter_dict.items() if key[4] == custom_id)",
+    #     globals=globals(),
+    # )
+    # print(f"timeit 1: {t1 * 1000.0:.1f} ms")
+    # t2 = timeit(
+    #     "dict(filter(_is_custom_key, filter_dict.items()))",
+    #     globals=globals(),
+    # )
+    # print(f"timeit 2: {t2 * 1000.0:.1f} ms")
+    # t3 = timeit(
+    #     "dict(filter(lambda items: items[0][4] == custom_id, filter_dict.items()))",
+    #     globals=globals(),
+    # )
+    # print(f"timeit 3: {t3 * 1000.0:.1f} ms")
+
+    # match target source via custom field identifier
+    filter_dict = dict(
+        filter(lambda items: items[0][4] == custom_id, filter_dict.items())
+    )
+    if not filter_dict:  # is empty
+        raise ValueError(f"custom={custom_id}")
+
+    # get target orientation in Cartesian coordinates
+    target_orientation_cart = np.asarray(
+        sph2cart(azimuth=target[0].yaw, elevation=target[0].pitch, radius=1.0)
+    ).flatten()
+
+    # get index of nearest orientation
+    _, orientations_index = orientations_kdtree.query(target_orientation_cart)
+
+    # from timeit import timeit
+    #
+    # globals()["filter_dict"] = filter_dict
+    # globals()["orientations_index"] = orientations_index
+    # globals()["orientations_sph"] = orientations_sph
+    # globals()["target"] = target
+    # t1 = timeit("list(filter_dict.keys())[orientations_index]", globals=globals())
+    # print(f"timeit 1: {t1 * 1000.0:.1f} ms")
+    # t2 = timeit(
+    #     "next(key for index, key in enumerate(filter_dict.keys()) if index == orientations_index)",
+    #     globals=globals(),
+    # )
+    # print(f"timeit 2: {t2 * 1000.0:.1f} ms")
+    # t3 = timeit(
+    #     "Orientation(*orientations_sph[orientations_index]), target[1:]",
+    #     globals=globals(),
+    # )
+    # print(f"timeit 3: {t3 * 1000.0:.1f} ms")
+
+    # create key based on spherical coordinates of nearest orientation
+    return Orientation(*orientations_sph[orientations_index]), *target[1:]
+
+
+def cart2sph(x, y, z):
+    radius = np.sqrt(x**2 + y**2 + z**2)
+    z_div_r = np.divide(
+        z, radius, out=np.zeros_like(radius, dtype=float), where=radius != 0
+    )
+    colatitude = np.arccos(z_div_r)
+    azimuth = np.mod(np.arctan2(y, x), 2 * np.pi)
+
+    # return azimuth, colatitude, radius
+    # all above is taken from
+    # https://github.com/pyfar/pyfar/blob/731353e539abce13f599306bfaa93898bc2f179d/pyfar/classes/coordinates.py#L2809
+
+    elevation = np.pi / 2 - colatitude
+    # return azimuth and elevation in deg
+    return np.rad2deg(azimuth), np.rad2deg(elevation), radius
+
+
+def sph2cart(azimuth, elevation, radius):
+    # get azimuth and elevation in deg
+    azimuth = np.deg2rad(azimuth)
+    elevation = np.deg2rad(elevation)
+    colatitude = np.pi / 2 - elevation
+
+    # all below is taken from
+    # https://github.com/pyfar/pyfar/blob/731353e539abce13f599306bfaa93898bc2f179d/pyfar/classes/coordinates.py#L2866
+    azimuth = np.atleast_1d(azimuth)
+    colatitude = np.atleast_1d(colatitude)
+    radius = np.atleast_1d(radius)
+
+    r_sin_cola = radius * np.sin(colatitude)
+    x = r_sin_cola * np.cos(azimuth)
+    y = r_sin_cola * np.sin(azimuth)
+    z = radius * np.cos(colatitude)
+
+    x[np.abs(x) < np.finfo(x.dtype).eps] = 0
+    y[np.abs(y) < np.finfo(y.dtype).eps] = 0
+    z[np.abs(z) < np.finfo(x.dtype).eps] = 0
+
+    return x, y, z
+
+
+# taken from
+# https://github.com/mgeier/python-audio/blob/master/audio-files/utility.py
 def pcm2float(sig, dtype="float64"):
     """Convert PCM signal to floating point with a range from -1 to 1.
     Use dtype='float32' for single precision.
@@ -40,6 +163,8 @@ def pcm2float(sig, dtype="float64"):
     return (sig.astype(dtype) - offset) / abs_max
 
 
+# taken from
+# https://github.com/mgeier/python-audio/blob/master/audio-files/utility.py
 def float2pcm(sig, dtype="int16"):
     """Convert floating point signal with a range from -1 to 1 to PCM.
     Any signal values outside the interval [-1.0, 1.0) are clipped.
@@ -76,6 +201,8 @@ def float2pcm(sig, dtype="int16"):
     return (sig * abs_max + offset).clip(i.min, i.max).astype(dtype)
 
 
+# taken from
+# https://github.com/mgeier/python-audio/blob/master/audio-files/utility.py
 def pcm24to32(data, channels=1, normalize=True):
     """Convert 24-bit PCM data to 32-bit.
     Parameters

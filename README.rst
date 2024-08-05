@@ -65,6 +65,7 @@ Create a config file with the name ``pyBinSimSettings.txt`` and content like thi
     enableCrossfading True
     useHeadphoneFilter False
     headphone_filterSize 1024
+    useNearestNeighbour False
     loudnessFactor 3
     loopSound True
     pauseConvolution False
@@ -78,7 +79,6 @@ Create a config file with the name ``pyBinSimSettings.txt`` and content like thi
     recv_protocol tcp
     recv_ip 127.0.0.1
     recv_port 10000
-
 
 Start Binaural Simulation::
 
@@ -159,6 +159,8 @@ enableCrossfading:
     Enable cross fade between audio blocks. Set 'False' or 'True'.
 useHeadphoneFilter: 
     Enables headphone equalization. The filter set should contain a filter with the identifier HPFILTER. Set 'False' or 'True'.
+useNearestNeighbour:
+    Enables selection of the rendered impulse responses based on nearest-neighbour search from the available sampling grid of a filter set. Set 'False' or 'True'.
 loudnessFactor: 
     Factor for overall output loudness. Attention: Clipping may occur.
 loopSound:

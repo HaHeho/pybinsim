@@ -58,7 +58,8 @@ class BinSimConfig(object):
             "enableCrossfading": False,
             "useHeadphoneFilter": False,
             "headphone_filterSize": 1024,
-            "loudnessFactor": float(1),
+            "useNearestNeighbour": False,
+            "loudnessFactor": 1.0,  # float
             "maxChannels": 8,
             "samplingRate": 48000,
             "loopSound": True,
@@ -246,18 +247,19 @@ class BinSim(object):
         hp_size = _get_multiple_size(hp_size, FilterType.headphone_Filter)
 
         # Create FilterStorage
-        filterStorage = FilterStorage(
-            self.blockSize,
-            self.config.get("filterSource[mat/wav]"),
-            self.config.get("filterList"),
-            self.config.get("filterDatabase"),
-            self.config.get("torchStorage[cpu/cuda]"),
-            self.config.get("useHeadphoneFilter"),
-            self.config.get("headphone_filterSize"),
-            ds_size,
-            early_size,
-            late_size,
-            sd_size,
+        self.filterStorage = FilterStorage(
+            block_size=self.blockSize,
+            filter_source=self.config.get("filterSource[mat/wav]"),
+            filter_list_name=self.config.get("filterList"),
+            filter_database=self.config.get("filterDatabase"),
+            torch_settings=self.config.get("torchStorage[cpu/cuda]"),
+            useHeadphoneFilter=self.config.get("useHeadphoneFilter"),
+            headphoneFilterSize=hp_size,
+            ds_filterSize=ds_size,
+            early_filterSize=early_size,
+            late_filterSize=late_size,
+            sd_filterSize=sd_size,
+            useNearestNeighbour=self.config.get("useNearestNeighbour"),
         )
 
         # Create SoundHandler
